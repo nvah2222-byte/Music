@@ -54,6 +54,7 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     settings: AppSettings,
     appVersion: String,
+    updatedFrom: String,
     modifier: Modifier = Modifier,
     onAutoAlbumsChange: (Boolean) -> Unit,
     onMinSongsChange: (Int) -> Unit,
@@ -459,6 +460,13 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.secondary
             )
+            if (updatedFrom.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.settings_update_installed, updatedFrom, appVersion),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             TextButton(onClick = onCheckNow) {
                 Text(stringResource(R.string.settings_check_now))
             }

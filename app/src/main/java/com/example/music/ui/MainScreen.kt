@@ -544,6 +544,11 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
 
     val scope = rememberCoroutineScope()
     val appVersion = remember { UpdateChecker.currentVersion(context) }
+    /** Было ли приложение только что обновлено (версия отличается от прошлого запуска). */
+    val updatedFrom = remember {
+        val previous = settings.lastSeenVersion
+        if (previous.isNotBlank() && previous != appVersion) previous else ""
+    }
 
     /** Проверка обновлений на GitHub (при запуске — молча, вручную — с сообщением). */
     fun runUpdateCheck(manual: Boolean) {
@@ -1715,6 +1720,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     is Screen.Settings -> SettingsScreen(
                         settings = settings,
                         appVersion = appVersion,
+                        updatedFrom = updatedFrom,
                         modifier = Modifier.padding(padding),
                         onAutoAlbumsChange = settingsStore::setAutoAlbums,
                         onMinSongsChange = settingsStore::setMinSongsForAlbum,

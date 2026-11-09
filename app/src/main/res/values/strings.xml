@@ -249,6 +249,7 @@
     <string name="settings_check_updates_desc">При запуске проверять новые релизы на GitHub и предлагать установку.</string>
     <string name="settings_update_repo">Репозиторий GitHub (owner/repo)</string>
     <string name="settings_app_version">Установленная версия: %1$s</string>
+    <string name="settings_update_installed">Обновление установлено: %1$s → %2$s</string>
     <string name="settings_check_now">Проверить сейчас</string>
     <string name="update_available_title">Доступна версия %1$s</string>
     <string name="update_install">Установить</string>
