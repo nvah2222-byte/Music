@@ -572,6 +572,11 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     }
 
     LaunchedEffect(Unit) {
+        val previous = settings.lastSeenVersion
+        if (previous.isNotBlank() && previous != appVersion) {
+            Toast.makeText(context, context.getString(R.string.update_installed, appVersion), Toast.LENGTH_LONG).show()
+        }
+        if (previous != appVersion) settingsStore.setLastSeenVersion(appVersion)
         if (settings.checkUpdates && settings.updateRepo.isNotBlank()) runUpdateCheck(manual = false)
     }
     val songPickerLauncher = rememberLauncherForActivityResult(

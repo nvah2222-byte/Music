@@ -58,7 +58,9 @@ data class AppSettings(
     /** Проверять обновления при запуске. */
     val checkUpdates: Boolean = true,
     /** Репозиторий GitHub в виде owner/repo для проверки релизов. */
-    val updateRepo: String = "nvah2222-byte/Music"
+    val updateRepo: String = "nvah2222-byte/Music",
+    /** Версия, которую видели в прошлый запуск: чтобы показать «обновление установлено». */
+    val lastSeenVersion: String = ""
 )
 
 /** Хранит настройки в SharedPreferences и раздаёт их как StateFlow. */
@@ -126,6 +128,8 @@ class SettingsStore(context: Context) {
 
     fun setUpdateRepo(repo: String) = update { it.copy(updateRepo = repo.trim()) }
 
+    fun setLastSeenVersion(version: String) = update { it.copy(lastSeenVersion = version) }
+
     fun exportPrefs(): JSONObject = dumpPrefs(prefs)
 
     fun importPrefs(json: JSONObject) {
@@ -166,6 +170,7 @@ class SettingsStore(context: Context) {
             .putInt(KEY_TARGET_DB, newValue.targetLoudnessDb)
             .putBoolean(KEY_CHECK_UPDATES, newValue.checkUpdates)
             .putString(KEY_UPDATE_REPO, newValue.updateRepo)
+            .putString(KEY_LAST_SEEN_VERSION, newValue.lastSeenVersion)
             .apply()
         _settings.value = newValue
     }
@@ -200,6 +205,7 @@ class SettingsStore(context: Context) {
         volumeBalance = prefs.getBoolean(KEY_VOLUME_BALANCE, false),
         targetLoudnessDb = prefs.getInt(KEY_TARGET_DB, -18).coerceIn(-30, -6),
         checkUpdates = prefs.getBoolean(KEY_CHECK_UPDATES, true),
+        lastSeenVersion = prefs.getString(KEY_LAST_SEEN_VERSION, "").orEmpty(),
         updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
             .orEmpty().ifBlank { AppSettings().updateRepo }
     )
@@ -233,6 +239,7 @@ class SettingsStore(context: Context) {
         const val KEY_TARGET_DB = "target_loudness_db"
         const val KEY_CHECK_UPDATES = "check_updates"
         const val KEY_UPDATE_REPO = "update_repo"
+        const val KEY_LAST_SEEN_VERSION = "last_seen_version"
         const val MAX_SONGS_PER_ALBUM = 10
     }
 }

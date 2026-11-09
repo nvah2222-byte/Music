@@ -255,6 +255,7 @@
     <string name="update_later">Позже</string>
     <string name="update_downloading">Скачиваем обновление…</string>
     <string name="update_none">Обновлений нет</string>
+    <string name="update_installed">Обновление установлено: версия %1$s</string>
     <string name="update_check_failed">Не удалось проверить обновления</string>
     <string name="update_repo_missing">Укажи GitHub-репозиторий (owner/repo) в настройках</string>
     <string name="update_install_failed">Не удалось открыть установщик</string>
