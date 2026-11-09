@@ -4,6 +4,8 @@
     <!-- Разрешения -->
     <!-- Сеть нужна только для проверки обновлений на GitHub -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Без этого системный установщик не открывается для скачанного APK -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
