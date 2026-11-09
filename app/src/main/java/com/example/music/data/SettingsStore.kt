@@ -58,7 +58,7 @@ data class AppSettings(
     /** Проверять обновления при запуске. */
     val checkUpdates: Boolean = true,
     /** Репозиторий GitHub в виде owner/repo для проверки релизов. */
-    val updateRepo: String = ""
+    val updateRepo: String = "nvah2222-byte/Music"
 )
 
 /** Хранит настройки в SharedPreferences и раздаёт их как StateFlow. */
@@ -200,7 +200,8 @@ class SettingsStore(context: Context) {
         volumeBalance = prefs.getBoolean(KEY_VOLUME_BALANCE, false),
         targetLoudnessDb = prefs.getInt(KEY_TARGET_DB, -18).coerceIn(-30, -6),
         checkUpdates = prefs.getBoolean(KEY_CHECK_UPDATES, true),
-        updateRepo = prefs.getString(KEY_UPDATE_REPO, "").orEmpty()
+        updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
+            .orEmpty().ifBlank { AppSettings().updateRepo }
     )
 
     companion object {
