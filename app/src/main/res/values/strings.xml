@@ -1,0 +1,293 @@
+<resources>
+    <string name="app_name">Music</string>
+    <string name="my_music">Моя Музыка</string>
+    <plurals name="tracks_count">
+        <item quantity="one">%d трек</item>
+        <item quantity="few">%d трека</item>
+        <item quantity="many">%d треков</item>
+        <item quantity="other">%d треков</item>
+    </plurals>
+    <string name="add_song">Добавить трек</string>
+    <string name="change_cover">Изменить обложку</string>
+    <string name="delete_file">Удалить файл</string>
+    <string name="delete_dialog_title">Удалить файл?</string>
+    <string name="delete_dialog_message">Файл «%1$s» будет удалён с устройства безвозвратно.</string>
+    <string name="delete">Удалить</string>
+    <string name="cancel">Отмена</string>
+    <string name="close">Закрыть</string>
+    <string name="play">Воспроизвести</string>
+    <string name="pause">Пауза</string>
+    <string name="next">Следующий трек</string>
+    <string name="previous">Предыдущий трек</string>
+    <string name="reorder">Переместить</string>
+    <string name="unknown_title">Неизвестный трек</string>
+    <string name="unknown_artist">Неизвестный исполнитель</string>
+
+    <!-- Меню и навигация -->
+    <string name="menu">Меню</string>
+    <string name="menu_songs">Песни</string>
+    <string name="menu_albums">Альбомы</string>
+    <string name="menu_folders">Папки</string>
+    <string name="menu_settings">Настройки</string>
+    <string name="back">Назад</string>
+    <string name="search_hint">Поиск по песням</string>
+    <string name="play_random">Случайный трек</string>
+
+    <!-- Воспроизведение -->
+    <string name="shuffle">Случайный порядок</string>
+    <string name="repeat_off">Повтор выключен</string>
+    <string name="repeat_all">Повторять все треки</string>
+    <string name="repeat_one">Повторять один трек</string>
+    <string name="now_playing">Сейчас играет</string>
+    <string name="playback_speed">Скорость воспроизведения</string>
+
+    <!-- Остановка через N песен -->
+    <string name="stop_timer">Остановка через N песен</string>
+    <string name="stop_cancel">Отменить остановку</string>
+    <string name="stop_after">Остановка через %1$s</string>
+    <string name="sleep_minutes">Остановка через %1$d мин</string>
+    <string name="stop_after_minutes">Остановка через %1$d мин</string>
+    <plurals name="songs_count">
+        <item quantity="one">%d песню</item>
+        <item quantity="few">%d песни</item>
+        <item quantity="many">%d песен</item>
+        <item quantity="other">%d песен</item>
+    </plurals>
+
+    <!-- Альбомы -->
+    <string name="albums_empty_title">Альбомов пока нет</string>
+    <string name="albums_empty_message">Включите автоматическую сборку альбомов по исполнителям в настройках — и они появятся здесь.</string>
+    <string name="open_settings">Открыть настройки</string>
+    <string name="permission_needed_title">Нужен доступ к музыке</string>
+    <string name="permission_needed_message">Приложение не видит треки, пока нет разрешения на чтение музыки. Разрешите доступ в системном окне.</string>
+    <string name="grant_access">Разрешить доступ</string>
+
+    <!-- Настройки -->
+    <string name="settings_auto_albums">Собирать альбомы по исполнителям</string>
+    <string name="settings_auto_albums_desc">Исполнитель попадает в список альбомов, только если у него не меньше %1$d песен</string>
+    <string name="settings_min_songs">Минимум песен для альбома: %1$d</string>
+    <string name="settings_dynamic_color">Динамические цвета (Material You)</string>
+    <string name="settings_dynamic_color_desc">Использовать цвета обоев устройства</string>
+    <string name="settings_auto_delete">Автоудаление дублей</string>
+    <string name="settings_auto_delete_desc">Треки с одинаковым названием, исполнителем и длительностью (±5 секунд) удаляются с устройства, если среди копий есть обложка. Копия с обложкой остаётся.</string>
+    <string name="settings_auto_delete_downloads">Автоудаление дублей из загрузок</string>
+    <string name="settings_auto_delete_downloads_desc">Лишние копии песен из системной папки «Загрузки» удаляются с устройства. Одна копия каждой песни остаётся.</string>
+    <string name="duplicates_found_title">Найдены дубли</string>
+    <string name="duplicates_found_message">Найдено %1$d лишних копий с тем же названием, исполнителем и длительностью. Удалить их с устройства? Одна копия каждого трека останется.</string>
+    <string name="downloads_duplicates_found_title">Дубли в загрузках</string>
+    <string name="downloads_duplicates_found_message">Найдено %1$d копий песен в папке «Загрузки». Удалить их с устройства? По одной копии каждой песни останется.</string>
+
+    <!-- Создание альбома -->
+    <string name="create_album_title">Создать альбом</string>
+    <string name="create_album_query">Слово для поиска (название и исполнитель)</string>
+    <string name="create_album_name">Название альбома</string>
+    <string name="select_all">Выбрать все</string>
+    <string name="deselect_all">Снять все</string>
+    <string name="create_album_selected">Выбрано: %1$d</string>
+    <string name="create">Создать</string>
+    <string name="add">Добавить</string>
+    <string name="add_tracks">Добавить треки</string>
+    <string name="add_to_album_title">Добавить треки в альбом</string>
+    <string name="delete_album">Удалить альбом</string>
+    <string name="delete_album_title">Удалить альбом?</string>
+    <string name="delete_album_message">Альбом «%1$s» будет удалён, песни останутся в библиотеке.</string>
+
+    <!-- Избранное и обмен -->
+    <string name="add_to_favorites">Добавить в избранное</string>
+    <string name="remove_from_favorites">Убрать из избранного</string>
+    <string name="menu_favorites">Избранное</string>
+    <string name="favorites_empty">В избранном пусто. Нажми на сердечко ♥ у песни, чтобы добавить её сюда.</string>
+    <string name="share">Поделиться</string>
+    <string name="menu_added">Добавленные</string>
+    <string name="added_empty">Добавленных треков пока нет. Нажми «+», чтобы добавить песню из файлов.</string>
+
+    <!-- Выбор нескольких треков -->
+    <string name="selected_count">Выбрано: %1$d</string>
+    <string name="select_songs">Выбрать треки</string>
+    <string name="add_selected_to_album">В альбом</string>
+    <string name="share_selected">Поделиться выбранными</string>
+    <string name="delete_selected">Удалить выбранные</string>
+    <string name="close_selection">Закрыть выбор</string>
+    <string name="delete_selected_title">Удалить выбранные треки?</string>
+    <string name="delete_selected_message">Файлов будет удалено: %1$d. Это действие нельзя отменить.</string>
+    <string name="new_album">Новый альбом</string>
+
+    <!-- Папки -->
+    <string name="folders_empty">Папок с музыкой пока нет</string>
+    <string name="folders_hidden">Скрытые папки</string>
+    <string name="folders_hide">Скрыть папку</string>
+    <string name="folders_show">Вернуть папку в библиотеку</string>
+    <string name="folder_empty">В этой папке нет треков</string>
+
+    <!-- Очередь -->
+    <string name="queue_title">Очередь</string>
+    <string name="queue_empty">Очередь пуста</string>
+    <string name="queue_open">Открыть очередь</string>
+    <string name="play_next">Играть следующим</string>
+    <string name="remove_from_queue">Убрать из очереди</string>
+    <string name="move_up">Переместить выше</string>
+    <string name="move_down">Переместить ниже</string>
+
+    <!-- Виджет -->
+    <string name="widget_name">Музыка</string>
+    <string name="widget_description">Плеер на главном экране</string>
+    <string name="widget_no_track">Ничего не играет</string>
+
+    <!-- Сортировка -->
+    <string name="sort">Сортировка</string>
+    <string name="sort_default">По умолчанию</string>
+    <string name="sort_title_asc">Название А→Я</string>
+    <string name="sort_title_desc">Название Я→А</string>
+    <string name="sort_shortest">Короткие сначала</string>
+    <string name="sort_longest">Длинные сначала</string>
+    <string name="sort_by_album">По обложке</string>
+    <string name="sort_newest">Новые сначала</string>
+    <string name="sort_favorites">Избранные сначала</string>
+    <string name="sort_played">Самые заигранные</string>
+    <string name="sort_shuffle">Случайный порядок</string>
+    <string name="sort_artist">Исполнитель А→Я</string>
+    <string name="sort_album">Альбом А→Я</string>
+
+    <!-- Поведение звука -->
+    <string name="settings_pause_other_audio">Пауза при других звуках</string>
+    <string name="settings_pause_other_audio_desc">YouTube, TikTok или звонок — песня плавно затихает и встаёт на паузу</string>
+    <string name="settings_pause_headphones">Пауза при отключении наушников</string>
+    <string name="settings_pause_headphones_desc">Вытащил наушники — песня останавливается</string>
+    <string name="settings_fade_out">Плавное затухание</string>
+    <string name="settings_fade_out_value">Длительность затухания: %1$d мс (0 — сразу)</string>
+    <string name="settings_fun_random">Колесо фортуны</string>
+    <string name="settings_fun_random_desc">«Случайный трек» запускает колесо фортуны: крутишь — что выпало, то и играет</string>
+    <string name="settings_resume_on_gain">Продолжать после других звуков</string>
+    <string name="settings_resume_on_gain_desc">Когда YouTube, TikTok или звонок закончился — песня сама продолжает играть</string>
+    <string name="settings_resume_long">Продолжать длинные треки</string>
+    <string name="settings_resume_long_desc">Аудиокниги и длинные записи начинаются с места, где остановился</string>
+    <string name="settings_backup">Резервная копия</string>
+    <string name="settings_backup_desc">Избранное, альбомы, добавленные треки, обложки и настройки в одном JSON-файле</string>
+    <string name="backup_export">Экспорт</string>
+    <string name="backup_import">Импорт</string>
+    <string name="backup_import_confirm_title">Импортировать данные?</string>
+    <string name="backup_import_confirm_message">Текущие настройки, избранное и альбомы будут заменены данными из файла.</string>
+    <string name="backup_export_done">Копия сохранена</string>
+    <string name="backup_export_failed">Не удалось сохранить копию</string>
+    <string name="backup_import_done">Данные импортированы</string>
+    <string name="backup_import_failed">Не удалось прочитать файл копии</string>
+    <string name="settings_wheel_speed">Как долго крутится колесо</string>
+    <string name="settings_wheel_speed_value">Длительность вращения: %1$d%% (выше — дольше и сильнее)</string>
+    <string name="wheel_variant_big">Огромное</string>
+    <string name="wheel_variant_classic">Классическое</string>
+
+    <!-- Итоги -->
+    <string name="menu_recap">Итоги</string>
+    <string name="recap_day">День</string>
+    <string name="recap_week">Неделя</string>
+    <string name="recap_month">Месяц</string>
+    <string name="recap_all">Всё время</string>
+    <string name="recap_total_plays">Прослушиваний</string>
+    <string name="recap_minutes">Минут музыки</string>
+    <string name="recap_top_song">Любимая песня</string>
+    <string name="recap_top_artist">Любимый исполнитель</string>
+    <string name="recap_top_album">Любимый альбом</string>
+    <string name="recap_empty">Пока нет данных — послушай что-нибудь!</string>
+
+    <!-- Колесо фортуны -->
+    <string name="wheel_title">Колесо фортуны</string>
+    <string name="wheel_spinning">Крутится…</string>
+    <string name="wheel_hint">Покрути колесо пальцем</string>
+    <string name="wheel_winner">Выпало:</string>
+
+    <!-- Статистика -->
+    <string name="menu_stats">Статистика</string>
+    <string name="stats_tracks">Треков</string>
+    <string name="stats_favorites">В избранном</string>
+    <string name="stats_total_time">Общее время</string>
+    <string name="stats_artists">Исполнителей</string>
+    <string name="stats_top_artists">Топ исполнителей</string>
+    <string name="stats_empty">Статистика появится, когда в библиотеке будут треки.</string>
+    <string name="stats_most_played">Самые заигранные</string>
+    <string name="stats_recent">Недавно играли</string>
+    <plurals name="plays_count">
+        <item quantity="one">%d раз</item>
+        <item quantity="few">%d раза</item>
+        <item quantity="many">%d раз</item>
+        <item quantity="other">%d раз</item>
+    </plurals>
+
+    <!-- Эквалайзер -->
+    <string name="equalizer">Эквалайзер</string>
+    <string name="equalizer_disable">Выключить эквалайзер</string>
+
+    <!-- Тема и сюрприз -->
+    <string name="theme">Тема</string>
+    <string name="theme_system">Системная</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="surprise">Сюрприз</string>
+    <string name="surprise_another">Ещё</string>
+
+    <string-array name="jokes">
+        <item>Лол. Кек. Чебурек. 🥟</item>
+        <item>Если песня закончилась — поздравляю, ты дошёл до конца. Гений.</item>
+        <item>Винил вернулся в моду. А ты всё ещё слушаешь цифру.</item>
+        <item>Твои соседи уже выучили весь твой плейлист.</item>
+        <item>Повтор одного трека — это не зацикленность, это преданность.</item>
+        <item>Шафл — единственная лотерея, где ты всегда выигрываешь.</item>
+        <item>Чем громче, тем лучше слышно. Логика — 100.</item>
+        <item>Твой музыкальный вкус — лучшее, что в тебе есть.</item>
+    </string-array>
+    <string name="create_album_name_taken">Альбом с таким именем уже есть</string>
+    <string name="delete_failed">Не удалось удалить файл</string>
+    <string name="settings_drawer_editable">Менять порядок меню</string>
+    <string name="settings_drawer_editable_desc">Показывать ручки перетаскивания в боковой шторке. Выключено — пункты не сдвинуть случайно.</string>
+    <string name="settings_accent_color">Акцентный цвет</string>
+    <string name="settings_accent_default">Стандартный фиолетовый</string>
+    <string name="settings_accent_hue">Оттенок %1$d°</string>
+    <string name="settings_crossfade">Переход между треками</string>
+    <string name="settings_crossfade_value">Затухание и плавный старт: %1$d мс</string>
+    <string name="settings_crossfade_off">Выключено</string>
+    <string name="settings_section_updates">Обновления</string>
+    <string name="settings_check_updates">Проверять обновления</string>
+    <string name="settings_check_updates_desc">При запуске проверять новые релизы на GitHub и предлагать установку.</string>
+    <string name="settings_update_repo">Репозиторий GitHub (owner/repo)</string>
+    <string name="settings_app_version">Установленная версия: %1$s</string>
+    <string name="settings_check_now">Проверить сейчас</string>
+    <string name="update_available_title">Доступна версия %1$s</string>
+    <string name="update_install">Установить</string>
+    <string name="update_later">Позже</string>
+    <string name="update_downloading">Скачиваем обновление…</string>
+    <string name="update_none">Обновлений нет</string>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="update_repo_missing">Укажи GitHub-репозиторий (owner/repo) в настройках</string>
+    <string name="update_install_failed">Не удалось открыть установщик</string>
+    <string name="settings_cover_rotation">Вращение обложки</string>
+    <string name="settings_cover_rotation_desc">Крутить обложку на полноэкранном плеере. На паузе она замирает на месте.</string>
+    <string name="settings_background_rotation">Крутить фон</string>
+    <string name="settings_background_rotation_desc">Размытый фон крутится вместе с обложкой с той же скоростью. Для рофла.</string>
+    <string name="create_album_from_archive">Альбом из архива</string>
+    <string name="archive_importing">Импортируем архив…</string>
+    <string name="archive_import_done">Альбом создан: %1$d треков</string>
+    <string name="archive_import_failed">Не удалось прочитать архив</string>
+    <string name="share_album">Поделиться альбомом</string>
+    <string name="archive_format_title">Формат архива</string>
+    <string name="archive_format_zip">ZIP</string>
+    <string name="archive_format_rar">RAR</string>
+    <string name="archive_format_7z">7Z</string>
+    <string name="packing_album">Упаковываем альбом…</string>
+    <string name="share_archive_failed">Не удалось создать архив</string>
+    <string name="rar_not_supported">RAR создать нельзя: формат закрытый. Выбери ZIP или 7Z.</string>
+    <string name="settings_section_library">Библиотека</string>
+    <string name="settings_section_appearance">Оформление</string>
+    <string name="settings_section_player">Плеер</string>
+    <string name="settings_section_sound">Звук</string>
+    <string name="settings_section_playback">Воспроизведение</string>
+    <string name="settings_section_backup">Резервная копия</string>
+    <string name="settings_sound_profile">Качество звучания</string>
+    <string name="settings_sound_profile_desc">Профиль эквалайзера для всех треков. Локальные файлы играют без сжатия, это тембр, а не битрейт.</string>
+    <string name="sound_profile_original">Оригинал</string>
+    <string name="sound_profile_bass">Бас</string>
+    <string name="sound_profile_vocal">Вокал</string>
+    <string name="sound_profile_rock">Рок</string>
+    <string name="sound_profile_jazz">Джаз</string>
+    <string name="settings_volume_balance">Балансировка громкости</string>
+    <string name="settings_volume_balance_desc">Подгонять все треки под один уровень громкости. Новый трек анализируется в фоне.</string>
+    <string name="settings_target_db">Целевая громкость: %1$d дБ</string>
+</resources>
