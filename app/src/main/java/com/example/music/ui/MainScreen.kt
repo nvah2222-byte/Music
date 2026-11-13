@@ -766,15 +766,16 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
 
     fun playSong(playlist: List<Song>, selected: Song) {
         val current = player ?: return
-        // Ручной выбор всегда играет список по порядку. Иначе при включённом shuffle
-        // в маленьком альбоме выбранная песня могла оказаться последней в перемешанном
-        // порядке — и следующей за ней просто не было.
-        if (current.shuffleModeEnabled) current.shuffleModeEnabled = false
+        // Выбранный трек должен заиграть сразу, а дальше — снова случайно,
+        // если случайный порядок включён: выключаем его на время seekTo и включаем обратно.
+        val shuffle = current.shuffleModeEnabled
+        if (shuffle) current.shuffleModeEnabled = false
         val index = playlist.indexOf(selected)
         current.setMediaItems(playlist.toMediaItems())
         if (index >= 0) current.seekTo(index, resumePosition(selected))
         current.prepare()
         current.play()
+        if (shuffle) current.shuffleModeEnabled = true
         recordPlay(selected.id)
     }
 
