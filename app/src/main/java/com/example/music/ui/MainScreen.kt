@@ -1070,6 +1070,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     // --- Навигация ---
     val addedSongs = librarySongs.filter { it.isCustom }
     var screen by rememberSaveable { mutableStateOf<Screen>(Screen.Songs) }
+    /** Экран, с которого открыли полноэкранный плеер: возвращаемся именно туда. */
+    var screenBeforePlayer by rememberSaveable { mutableStateOf<Screen>(Screen.Songs) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     // Порядок пунктов шторки: перетаскивается за ручку и сохраняется в настройках.
     val drawerOrder = DrawerEntry.ordered(settings.drawerOrder)
@@ -1086,6 +1088,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         screen = when (screen) {
             is Screen.AlbumDetail -> Screen.Albums
             is Screen.FolderDetail -> Screen.Folders
+            is Screen.Player -> screenBeforePlayer
             else -> Screen.Songs
         }
     }
@@ -1214,7 +1217,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     onOpenQueue = { showQueue = true },
                     coverRotation = settings.coverRotation,
                     rotateBackground = settings.backgroundRotation,
-                    onClose = { screen = Screen.Songs }
+                    onClose = { screen = screenBeforePlayer }
                 )
             }
         } else {
@@ -1252,7 +1255,10 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                             duration = duration,
                             songTitle = currentSong?.title,
                             onTitleClick = {
-                                if (currentSong != null) screen = Screen.Player
+                                if (currentSong != null) {
+                                    screenBeforePlayer = screen
+                                    screen = Screen.Player
+                                }
                             },
                             onPlayPause = { if (isPlaying) player.pause() else player.play() },
                             onNext = { player.seekToNext() },
