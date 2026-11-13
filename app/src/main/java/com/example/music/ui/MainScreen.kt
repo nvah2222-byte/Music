@@ -505,6 +505,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
     var pendingDeleteSelected by remember { mutableStateOf(false) }
+    var albumCoverToApply by remember { mutableStateOf<Pair<CustomAlbum, Uri>?>(null) }
+    var applyAlbumCoverToAll by remember { mutableStateOf(true) }
     var albumPickerForSelection by remember { mutableStateOf(false) }
     var createAlbumPreselected by remember { mutableStateOf(emptySet<Long>()) }
     var showImportConfirm by remember { mutableStateOf(false) }
@@ -539,6 +541,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
             val updated = album.copy(coverUri = uri.toString())
             customAlbums = customAlbums.toMutableList().also { it[index] = updated }
             repository.saveCustomAlbums(customAlbums)
+            applyAlbumCoverToAll = true
+            albumCoverToApply = updated to uri
         }
     }
 
@@ -1861,6 +1865,49 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.archive_importing))
+                }
+            }
+        )
+    }
+
+    albumCoverToApply?.let { (album, uri) ->
+        AlertDialog(
+            onDismissRequest = { albumCoverToApply = null },
+            title = { Text(stringResource(R.string.album_cover_dialog_title)) },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = applyAlbumCoverToAll,
+                        onCheckedChange = { applyAlbumCoverToAll = it }
+                    )
+                    Text(stringResource(R.string.album_cover_apply_all))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (applyAlbumCoverToAll) {
+                        val ids = album.songIds.toSet()
+                        var changed = false
+                        songs.forEachIndexed { index, song ->
+                            if (song.id in ids && song.customCover != uri) {
+                                songs[index] = song.copy(customCover = uri)
+                                coverPresence = coverPresence + (song.id to true)
+                                changed = true
+                            }
+                        }
+                        if (changed) {
+                            repository.saveCoverPresence(coverPresence)
+                            repository.save(songs)
+                        }
+                    }
+                    albumCoverToApply = null
+                }) {
+                    Text(stringResource(R.string.album_cover_apply))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { albumCoverToApply = null }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
