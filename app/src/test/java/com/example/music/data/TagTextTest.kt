@@ -20,6 +20,15 @@ class TagTextTest {
     }
 
     @Test
+    fun fileNameSplitsIntoArtistAndTitle() {
+        assertEquals(
+            "Неважно (hitmo.net)" to "Буерак",
+            TagText.splitFileName("Буерак - Неважно (hitmo.net).mp3")
+        )
+        assertEquals("track" to null, TagText.splitFileName("track.mp3"))
+    }
+
+    @Test
     fun emptyAndAsciiAreSafe() {
         assertEquals("", TagText.fix(""))
         assertEquals("abc", TagText.fix("abc"))

@@ -96,8 +96,10 @@ class SongRepository(context: Context) {
                 ?: appContext.getString(R.string.unknown_title)
             val rawArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 ?: appContext.getString(R.string.unknown_artist)
-            val (title, artist) = resolveTitleAndArtist(rawTitle, rawArtist)
-            val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM).orEmpty()
+            val (title, artist) = resolveTitleAndArtist(rawTitle, rawArtist, fileNameOf(uri))
+            val album = TagText.fix(
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM).orEmpty()
+            )
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 ?.toLongOrNull() ?: 0L
             Song(
@@ -126,34 +128,63 @@ class SongRepository(context: Context) {
      *   («Исполнитель - Название»);
      * - если название тоже начинается с «Исполнитель - », убираем дубль из названия.
      */
-    private fun resolveTitleAndArtist(rawTitle: String, rawArtist: String): Pair<String, String> {
+    private fun resolveTitleAndArtist(
+        rawTitle: String,
+        rawArtist: String,
+        fallbackName: String? = null
+    ): Pair<String, String> {
         // Битые кодировки в тегах: «聚袇敲敷獗» → «Пасха».
         val fixedTitle = TagText.fix(rawTitle)
         val fixedArtist = TagText.fix(rawArtist)
         val unknown = appContext.getString(R.string.unknown_artist)
+
+        // Тег разрушен (остались только «??????»): берём имя файла и режем «Артист - Название».
+        var title = fixedTitle
+        var artistFromName: String? = null
+        if (title.none { it.isLetterOrDigit() } || TagText.looksBroken(title)) {
+            fallbackName?.takeIf { it.isNotBlank() }?.let { name ->
+                val (fromName, artistName) = TagText.splitFileName(name)
+                if (fromName.isNotBlank()) title = fromName
+                artistFromName = artistName
+            }
+        }
+
         val artist = cleanArtistTag(fixedArtist)
         val artistMissing = artist.isBlank() ||
             artist.equals("<unknown>", ignoreCase = true) ||
             artist.equals("unknown", ignoreCase = true) ||
-            artist.equals(unknown, ignoreCase = true)
+            artist.equals(unknown, ignoreCase = true) ||
+            artist.none { it.isLetterOrDigit() } || TagText.looksBroken(artist)
         val junkArtist = !artistMissing && looksLikeWebsite(artist)
 
         if (!artistMissing && !junkArtist) {
             // Артист в теге нормальный; если название дублирует его, чистим название.
-            val parsed = splitArtistFromTitle(fixedTitle)
+            val parsed = splitArtistFromTitle(title)
             if (parsed != null && normalizeTitle(parsed.first) == normalizeTitle(artist)) {
                 return parsed
             }
-            return fixedTitle to artist
+            return title to artist
         }
 
-        val parsed = splitArtistFromTitle(fixedTitle)
+        // Артист не нашёлся: пробуем имя файла, затем «Исполнитель - Название» в теге.
+        val fromName = artistFromName?.takeIf { it.isNotBlank() && it.none { ch -> !ch.isLetterOrDigit() && ch !in " ._-'&" } }
+        if (fromName != null) return title to cleanArtistTag(fromName)
+
+        val parsed = splitArtistFromTitle(title)
         if (parsed != null) return parsed
 
         // Артист не нашёлся, а в теге сайт или <unknown>: помечаем как неизвестного,
         // чтобы он не попадал в альбомы и итоги под чужим именем.
-        return fixedTitle to unknown
+        return title to unknown
     }
+
+    /** Имя файла для content:// и file:// — чтобы подставить его вместо битого тега. */
+    private fun fileNameOf(uri: Uri): String? = runCatching {
+        if (uri.scheme == "file") return@runCatching uri.lastPathSegment
+        appContext.contentResolver
+            .query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+    }.getOrNull()
 
     /** Убирает из имени артиста ссылки на сайты: «Артист [zaycev.net]» → «Артист». */
     private fun cleanArtistTag(artist: String): String {
@@ -409,6 +440,7 @@ class SongRepository(context: Context) {
             add(MediaStore.Audio.Media.ALBUM)
             add(MediaStore.Audio.Media.DURATION)
             add(MediaStore.Audio.Media.DATE_ADDED)
+            add(MediaStore.MediaColumns.DISPLAY_NAME)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 add(MediaStore.MediaColumns.RELATIVE_PATH)
             }
@@ -429,12 +461,14 @@ class SongRepository(context: Context) {
             val durationIdx = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val pathIdx = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
             val dateIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+            val nameIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIdx)
                 val durationMs = cursor.getLong(durationIdx)
                 val (title, artist) = resolveTitleAndArtist(
                     cursor.getString(titleIdx) ?: appContext.getString(R.string.unknown_title),
-                    cursor.getString(artistIdx) ?: appContext.getString(R.string.unknown_artist)
+                    cursor.getString(artistIdx) ?: appContext.getString(R.string.unknown_artist),
+                    if (nameIdx >= 0) cursor.getString(nameIdx) else null
                 )
                 songs += Song(
                     id = id,

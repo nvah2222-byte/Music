@@ -63,4 +63,23 @@ object TagText {
         }
         return good - bad
     }
+    /** «Буерак - Неважно (hitmo.net).mp3» → название «Неважно (hitmo.net)» и артист «Буерак». */
+    fun splitFileName(fileName: String): Pair<String, String?> {
+        val base = fileName.substringBeforeLast('.').trim()
+        val parts = base.split(" - ", limit = 2)
+        return if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+            parts[1].trim() to parts[0].trim()
+        } else {
+            base to null
+        }
+    }
+    /**
+     * Тег разрушен: больше половины символов — «?» (байты потеряны при записи).
+     * «???» и «???????Ğ®?????» считаем битыми, «Что? Где? Когда?» — нет.
+     */
+    fun looksBroken(text: String): Boolean {
+        if (text.isBlank()) return true
+        val questions = text.count { it == '?' }
+        return questions >= 3 && questions * 2 >= text.length
+    }
 }

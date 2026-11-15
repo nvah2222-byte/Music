@@ -2841,7 +2841,7 @@ private fun DuplicatesDialog(
                             Column(Modifier.padding(start = 4.dp)) {
                                 val fileName = fileNames[song.id].orEmpty()
                                 // Битый тег («??????») показываем как имя файла — так понятнее.
-                                val displayTitle = if (song.title.none { it.isLetterOrDigit() } && fileName.isNotBlank()) {
+                                val displayTitle = if ((song.title.none { it.isLetterOrDigit() } || com.example.music.data.TagText.looksBroken(song.title)) && fileName.isNotBlank()) {
                                     fileName.substringBeforeLast('.')
                                 } else {
                                     song.title
