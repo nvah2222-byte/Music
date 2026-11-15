@@ -92,7 +92,7 @@ class SettingsStore(context: Context) {
     fun setAutoDeleteDownloadsDuplicates(enabled: Boolean) =
         update { it.copy(autoDeleteDownloadsDuplicates = enabled) }
 
-    fun setTrackSort(sort: Int) = update { it.copy(trackSort = sort.coerceIn(0, 11)) }
+    fun setTrackSort(sort: Int) = update { it.copy(trackSort = sort.coerceIn(0, 12)) }
 
     fun setPauseOnOtherAudio(enabled: Boolean) = update { it.copy(pauseOnOtherAudio = enabled) }
 
@@ -202,7 +202,7 @@ class SettingsStore(context: Context) {
         darkMode = prefs.getInt(KEY_DARK_MODE, 0).coerceIn(0, 2),
         autoDeleteDuplicates = prefs.getBoolean(KEY_AUTO_DELETE_DUPLICATES, false),
         autoDeleteDownloadsDuplicates = prefs.getBoolean(KEY_AUTO_DELETE_DOWNLOADS, false),
-        trackSort = prefs.getInt(KEY_TRACK_SORT, 0).coerceIn(0, 11),
+        trackSort = prefs.getInt(KEY_TRACK_SORT, 0).coerceIn(0, 12),
         pauseOnOtherAudio = prefs.getBoolean(KEY_PAUSE_ON_OTHER_AUDIO, true),
         pauseOnHeadphonesUnplug = prefs.getBoolean(KEY_PAUSE_ON_HEADPHONES, true),
         fadeOutMs = prefs.getInt(KEY_FADE_OUT_MS, 800).coerceIn(0, 2000),

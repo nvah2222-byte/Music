@@ -1000,7 +1000,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     var samplingTotal by remember { mutableIntStateOf(0) }
     var samplingDone by remember { mutableIntStateOf(0) }
     LaunchedEffect(settings.trackSort, librarySongs.size) {
-        if (settings.trackSort != 5) {
+        if (settings.trackSort != 5 && settings.trackSort != 12) {
             samplingTotal = 0
             return@LaunchedEffect
         }
@@ -1054,7 +1054,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         2 -> librarySongs.sortedByDescending { it.title.lowercase() }
         3 -> librarySongs.sortedBy { it.durationMs }
         4 -> librarySongs.sortedByDescending { it.durationMs }
-        5 -> {
+        5, 12 -> {
             // Ключ «та же обложка»: своя картинка или хэш встроенной картинки.
             fun coverKey(song: Song): String = when {
                 song.customCover != null -> "c:${song.customCover}"
@@ -1066,15 +1066,18 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                 val key = coverKey(song)
                 counts[key] = (counts[key] ?: 0) + 1
             }
-            // Сначала группы с самой большой обложкой (больше всего одинаковых),
-            // внутри группы — по цвету, затем по названию.
-            librarySongs.sortedWith(
+            val bySize = if (settings.trackSort == 12) {
+                // «Мало → много»: сначала одиночки, большие группы в конце.
+                compareBy<Song> { counts[coverKey(it)] ?: 0 }
+            } else {
+                // «Много → мало»: самые большие группы обложек сверху.
                 compareByDescending<Song> { counts[coverKey(it)] ?: 0 }
-                    .thenBy {
-                        val hue = coverColors[it.id] ?: return@thenBy 13
-                        if (hue < 0) 12 else hue / 30
-                    }
-                    .thenBy { it.title.lowercase() }
+            }
+            librarySongs.sortedWith(
+                bySize.thenBy {
+                    val hue = coverColors[it.id] ?: return@thenBy 13
+                    if (hue < 0) 12 else hue / 30
+                }.thenBy { it.title.lowercase() }
             )
         }
         6 -> librarySongs.sortedByDescending { it.dateAdded }
@@ -1108,7 +1111,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         stringResource(R.string.sort_played),
         stringResource(R.string.sort_shuffle),
         stringResource(R.string.sort_artist),
-        stringResource(R.string.sort_album)
+        stringResource(R.string.sort_album),
+        stringResource(R.string.sort_covers_asc)
     )
 
     // --- Быстрая прокрутка по алфавиту ---

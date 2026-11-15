@@ -140,13 +140,14 @@
     <string name="sort_title_desc">Название Я→А</string>
     <string name="sort_shortest">Короткие сначала</string>
     <string name="sort_longest">Длинные сначала</string>
-    <string name="sort_by_album">По цвету обложки</string>
+    <string name="sort_by_album">Обложки: много → мало</string>
     <string name="sort_newest">Новые сначала</string>
     <string name="sort_favorites">Избранные сначала</string>
     <string name="sort_played">Самые заигранные</string>
     <string name="sort_shuffle">Случайный порядок</string>
     <string name="sort_artist">Исполнитель А→Я</string>
     <string name="sort_album">Альбом А→Я</string>
+    <string name="sort_covers_asc">Обложки: мало → много</string>
 
     <!-- Поведение звука -->
     <string name="settings_pause_other_audio">Пауза при других звуках</string>
