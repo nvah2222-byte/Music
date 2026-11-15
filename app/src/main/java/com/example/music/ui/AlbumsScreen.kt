@@ -247,7 +247,7 @@ private fun AlbumRow(
                         cornerRadius = 8.dp,
                         modifier = Modifier.size(52.dp)
                     )
-                } else if (album.isCustom || firstSong == null) {
+                } else if (firstSong == null) {
                     val hue = ((album.artist.hashCode() % 360) + 360) % 360
                     Box(
                         modifier = Modifier
