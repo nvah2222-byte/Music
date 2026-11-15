@@ -996,6 +996,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
 
     // Оттенки обложек для сортировки: считаем в фоне (пачками) и кэшируем в настройках.
     var coverColors by remember { mutableStateOf(repository.loadCoverColors()) }
+    var coverHashes by remember { mutableStateOf(repository.loadCoverHashes()) }
     var samplingTotal by remember { mutableIntStateOf(0) }
     var samplingDone by remember { mutableIntStateOf(0) }
     LaunchedEffect(settings.trackSort, librarySongs.size) {
@@ -1003,7 +1004,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
             samplingTotal = 0
             return@LaunchedEffect
         }
-        val missing = librarySongs.filter { it.id !in coverColors }
+        val missing = librarySongs.filter { it.id !in coverHashes }
         if (missing.isEmpty()) {
             samplingTotal = 0
             return@LaunchedEffect
@@ -1013,15 +1014,23 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         // Считаем всё в отдельную карту и показываем результат одним разом,
         // иначе список переставляется на каждом шаге и выглядит как «разнобой».
         val fresh = HashMap<Long, Int>(missing.size)
+        val freshHashes = HashMap<Long, Long>(missing.size)
         for (chunk in missing.chunked(8)) {
             val results = chunk.map { song ->
                 async(Dispatchers.IO) { song.id to CoverColorSampler.sample(context, song) }
             }.awaitAll()
-            results.forEach { (id, hue) -> if (hue != null) fresh[id] = hue }
+            results.forEach { (id, sample) ->
+                if (sample != null) {
+                    fresh[id] = sample.hue
+                    freshHashes[id] = sample.hash
+                }
+            }
             samplingDone += chunk.size
         }
         coverColors = coverColors + fresh
+        coverHashes = coverHashes + freshHashes
         repository.saveCoverColors(coverColors)
+        repository.saveCoverHashes(coverHashes)
         samplingTotal = 0
     }
 
@@ -1038,20 +1047,36 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     }
 
     val sortedSongs = remember(
-        settings.trackSort, librarySongs, coverPresence, coverColors, favorites, playCounts, shuffledOrder
+        settings.trackSort, librarySongs, coverPresence, coverColors, coverHashes, favorites, playCounts, shuffledOrder
     ) {
         when (settings.trackSort) {
         1 -> librarySongs.sortedBy { it.title.lowercase() }
         2 -> librarySongs.sortedByDescending { it.title.lowercase() }
         3 -> librarySongs.sortedBy { it.durationMs }
         4 -> librarySongs.sortedByDescending { it.durationMs }
-        5 -> librarySongs.sortedWith(
-            // Цветовые сектора по 30°: 0..11 — цвета, 12 — серые/чёрные, 13 — без обложки.
-            compareBy<Song> {
-                val hue = coverColors[it.id] ?: return@compareBy 13
-                if (hue < 0) 12 else hue / 30
-            }.thenBy { it.title.lowercase() }
-        )
+        5 -> {
+            // Ключ «та же обложка»: своя картинка или хэш встроенной картинки.
+            fun coverKey(song: Song): String = when {
+                song.customCover != null -> "c:${song.customCover}"
+                coverHashes[song.id] != null -> "h:${coverHashes[song.id]}"
+                else -> "n:${song.id}"
+            }
+            val counts = HashMap<String, Int>()
+            librarySongs.forEach { song ->
+                val key = coverKey(song)
+                counts[key] = (counts[key] ?: 0) + 1
+            }
+            // Сначала группы с самой большой обложкой (больше всего одинаковых),
+            // внутри группы — по цвету, затем по названию.
+            librarySongs.sortedWith(
+                compareByDescending<Song> { counts[coverKey(it)] ?: 0 }
+                    .thenBy {
+                        val hue = coverColors[it.id] ?: return@thenBy 13
+                        if (hue < 0) 12 else hue / 30
+                    }
+                    .thenBy { it.title.lowercase() }
+            )
+        }
         6 -> librarySongs.sortedByDescending { it.dateAdded }
         7 -> librarySongs.sortedWith(
             compareBy<Song> { if (it.id in favorites) 0 else 1 }

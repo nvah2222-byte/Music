@@ -377,6 +377,22 @@ class SongRepository(context: Context) {
             id to hue
         }.toMap()
 
+    /** Хэши обложек (одинаковая картинка — одинаковый хэш) для группировки. */
+    fun loadCoverHashes(): Map<Long, Long> =
+        prefs.getStringSet(KEY_COVER_HASHES, emptySet()).orEmpty().mapNotNull { entry ->
+            val separator = entry.indexOf('|')
+            if (separator <= 0) return@mapNotNull null
+            val id = entry.substring(0, separator).toLongOrNull() ?: return@mapNotNull null
+            val hash = entry.substring(separator + 1).toLongOrNull() ?: return@mapNotNull null
+            id to hash
+        }.toMap()
+
+    fun saveCoverHashes(hashes: Map<Long, Long>) {
+        prefs.edit()
+            .putStringSet(KEY_COVER_HASHES, hashes.map { (id, hash) -> "$id|$hash" }.toSet())
+            .apply()
+    }
+
     fun saveCoverColors(colors: Map<Long, Int>) {
         prefs.edit()
             .putStringSet(
@@ -519,6 +535,7 @@ class SongRepository(context: Context) {
         const val KEY_CUSTOM_ALBUMS = "custom_albums"
         const val KEY_COVER_PRESENCE = "cover_presence"
         const val KEY_COVER_COLORS = "cover_colors_v3"
+        const val KEY_COVER_HASHES = "cover_hashes"
         const val KEY_POSITION_PREFIX = "position_"
         const val MAX_PLAY_EVENTS = 5000
 

@@ -14,17 +14,19 @@ import com.example.music.Song
  * Берём картинку в миниатюре и определяем доминирующий цветовой сектор (шаг 30°).
  * Результат кэшируется в настройках, чтобы не читать файлы каждый раз.
  */
+data class CoverSample(val hue: Int, val hash: Long)
+
 object CoverColorSampler {
 
     private const val SAMPLE_SIZE = 16
     private const val BUCKETS = 12
 
-    suspend fun sample(context: Context, song: Song): Int? = withContext(Dispatchers.IO) {
+    suspend fun sample(context: Context, song: Song): CoverSample? = withContext(Dispatchers.IO) {
         val bitmap = song.customCover?.let { decode(context, it) }
             ?: embeddedArtwork(context, song.uri)
             ?: return@withContext null
         try {
-            hueOf(bitmap)
+            CoverSample(hueOf(bitmap), hashOf(bitmap))
         } finally {
             bitmap.recycle()
         }
@@ -104,5 +106,31 @@ object CoverColorSampler {
         val best = buckets.indices.maxByOrNull { buckets[it] } ?: return -1
         if (buckets[best] == 0) return -1
         return best * (360 / BUCKETS) + (360 / BUCKETS) / 2
+    }
+    /**
+     * Перцептивный хэш 8x8: одинаковые обложки дают одинаковый хэш,
+     * даже если у треков разные альбомы. Так группируем «та же картинка».
+     */
+    private fun hashOf(bitmap: Bitmap): Long {
+        val small = Bitmap.createScaledBitmap(bitmap, 8, 8, true)
+        val gray = IntArray(64)
+        var sum = 0
+        for (y in 0 until 8) {
+            for (x in 0 until 8) {
+                val pixel = small.getPixel(x, y)
+                val value = (((pixel shr 16) and 0xFF) * 299 +
+                    ((pixel shr 8) and 0xFF) * 587 +
+                    (pixel and 0xFF) * 114) / 1000
+                gray[y * 8 + x] = value
+                sum += value
+            }
+        }
+        val average = sum / 64
+        var hash = 0L
+        for (index in 0 until 64) {
+            if (gray[index] >= average) hash = hash or (1L shl index)
+        }
+        if (small !== bitmap) small.recycle()
+        return hash
     }
 }
