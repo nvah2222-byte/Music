@@ -8,16 +8,16 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.music.Song
-import kotlin.math.abs
 
 /**
  * Оттенок обложки для сортировки «по обложке».
- * Берём картинку в миниатюре, усредняем несколько пикселей и возвращаем hue (0..359).
+ * Берём картинку в миниатюре и определяем доминирующий цветовой сектор (шаг 30°).
  * Результат кэшируется в настройках, чтобы не читать файлы каждый раз.
  */
 object CoverColorSampler {
 
     private const val SAMPLE_SIZE = 16
+    private const val BUCKETS = 12
 
     suspend fun sample(context: Context, song: Song): Int? = withContext(Dispatchers.IO) {
         val bitmap = song.customCover?.let { decode(context, it) }
@@ -62,40 +62,47 @@ object CoverColorSampler {
         return size
     }
 
-    /** Средний оттенок непрозрачных и не слишком тёмных пикселей. */
-    private fun hueOf(bitmap: Bitmap): Int? {
-        val stepX = (bitmap.width / 8).coerceAtLeast(1)
-        val stepY = (bitmap.height / 8).coerceAtLeast(1)
-        var sumR = 0.0
-        var sumG = 0.0
-        var sumB = 0.0
-        var count = 0
+    /**
+     * Доминирующий оттенок, 0..359. Средний цвет фотографии всегда мутно-серый,
+     * поэтому берём самый частый цветовой сектор среди насыщенных пикселей.
+     * -1 — серая/чёрная обложка: такие ставим отдельной группой в конце.
+     */
+    private fun hueOf(bitmap: Bitmap): Int {
+        val buckets = IntArray(BUCKETS)
+        var sampled = 0
+        var neutral = 0
+        val stepX = (bitmap.width / 16).coerceAtLeast(1)
+        val stepY = (bitmap.height / 16).coerceAtLeast(1)
         var y = 0
         while (y < bitmap.height) {
             var x = 0
             while (x < bitmap.width) {
                 val pixel = bitmap.getPixel(x, y)
-                val alpha = pixel ushr 24
-                if (alpha > 128) {
-                    sumR += (pixel shr 16) and 0xFF
-                    sumG += (pixel shr 8) and 0xFF
-                    sumB += pixel and 0xFF
-                    count++
+                if ((pixel ushr 24) > 128) {
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.RGBToHSV(
+                        (pixel shr 16) and 0xFF,
+                        (pixel shr 8) and 0xFF,
+                        pixel and 0xFF,
+                        hsv
+                    )
+                    sampled++
+                    if (hsv[1] < 0.14f || hsv[2] < 0.10f) {
+                        neutral++
+                    } else {
+                        buckets[(hsv[0].toInt() / (360 / BUCKETS)).coerceIn(0, BUCKETS - 1)]++
+                    }
                 }
                 x += stepX
             }
             y += stepY
         }
-        if (count == 0) return null
-        val r = (sumR / count).toFloat()
-        val g = (sumG / count).toFloat()
-        val b = (sumB / count).toFloat()
-        // Почти серые обложки ставим в конец: сортировать их по оттенку бессмысленно.
-        val max = maxOf(r, g, b)
-        val min = minOf(r, g, b)
-        if (abs(max - min) < 18f || max < 24f) return 360
-        val hsv = FloatArray(3)
-        android.graphics.Color.RGBToHSV(r.toInt(), g.toInt(), b.toInt(), hsv)
-        return hsv[0].toInt().coerceIn(0, 359)
+        if (sampled == 0) return -1
+        val colored = buckets.sum()
+        // Даже тёмные обложки обычно имеют цветной акцент: хватает 15% цветных пикселей.
+        if (colored < sampled * 0.15f) return -1
+        val best = buckets.indices.maxByOrNull { buckets[it] } ?: return -1
+        if (buckets[best] == 0) return -1
+        return best * (360 / BUCKETS) + (360 / BUCKETS) / 2
     }
 }

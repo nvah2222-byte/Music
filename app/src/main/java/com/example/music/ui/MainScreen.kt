@@ -1010,18 +1010,18 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         }
         samplingTotal = missing.size
         samplingDone = 0
-        // По 8 файлов параллельно: иначе 1000 обложек читаются минутами.
+        // Считаем всё в отдельную карту и показываем результат одним разом,
+        // иначе список переставляется на каждом шаге и выглядит как «разнобой».
+        val fresh = HashMap<Long, Int>(missing.size)
         for (chunk in missing.chunked(8)) {
             val results = chunk.map { song ->
                 async(Dispatchers.IO) { song.id to CoverColorSampler.sample(context, song) }
             }.awaitAll()
-            val fresh = results.mapNotNull { (id, hue) -> hue?.let { id to it } }.toMap()
-            if (fresh.isNotEmpty()) {
-                coverColors = coverColors + fresh
-                repository.saveCoverColors(coverColors)
-            }
+            results.forEach { (id, hue) -> if (hue != null) fresh[id] = hue }
             samplingDone += chunk.size
         }
+        coverColors = coverColors + fresh
+        repository.saveCoverColors(coverColors)
         samplingTotal = 0
     }
 
@@ -1046,11 +1046,11 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         3 -> librarySongs.sortedBy { it.durationMs }
         4 -> librarySongs.sortedByDescending { it.durationMs }
         5 -> librarySongs.sortedWith(
-            // Жёсткая и предсказуемая сортировка: сначала по цветовому сектору (по 10°),
-            // внутри сектора — по точному оттенку, затем по названию. Без обложки — в конец.
-            compareBy<Song> { coverColors[it.id]?.div(10) ?: 40 }
-                .thenBy { coverColors[it.id] ?: 400 }
-                .thenBy { it.title.lowercase() }
+            // Цветовые сектора по 30°: 0..11 — цвета, 12 — серые/чёрные, 13 — без обложки.
+            compareBy<Song> {
+                val hue = coverColors[it.id] ?: return@compareBy 13
+                if (hue < 0) 12 else hue / 30
+            }.thenBy { it.title.lowercase() }
         )
         6 -> librarySongs.sortedByDescending { it.dateAdded }
         7 -> librarySongs.sortedWith(

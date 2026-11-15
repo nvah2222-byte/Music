@@ -484,7 +484,7 @@ class SongRepository(context: Context) {
         const val KEY_PLAY_EVENTS = "play_events"
         const val KEY_CUSTOM_ALBUMS = "custom_albums"
         const val KEY_COVER_PRESENCE = "cover_presence"
-        const val KEY_COVER_COLORS = "cover_colors"
+        const val KEY_COVER_COLORS = "cover_colors_v3"
         const val KEY_POSITION_PREFIX = "position_"
         const val MAX_PLAY_EVENTS = 5000
 
