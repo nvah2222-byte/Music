@@ -59,6 +59,8 @@ data class AppSettings(
     val checkUpdates: Boolean = true,
     /** Репозиторий GitHub в виде owner/repo для проверки релизов. */
     val updateRepo: String = "nvah2222-byte/Music",
+    /** Скрывать из библиотеки треки короче 30 секунд (рингтоны, сигналы). */
+    val hideShortTracks: Boolean = false,
     /** Версия, которую видели в прошлый запуск: чтобы показать «обновление установлено». */
     val lastSeenVersion: String = ""
 )
@@ -130,6 +132,8 @@ class SettingsStore(context: Context) {
 
     fun setLastSeenVersion(version: String) = update { it.copy(lastSeenVersion = version) }
 
+    fun setHideShortTracks(enabled: Boolean) = update { it.copy(hideShortTracks = enabled) }
+
     fun exportPrefs(): JSONObject = dumpPrefs(prefs)
 
     fun importPrefs(json: JSONObject) {
@@ -171,6 +175,7 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_CHECK_UPDATES, newValue.checkUpdates)
             .putString(KEY_UPDATE_REPO, newValue.updateRepo)
             .putString(KEY_LAST_SEEN_VERSION, newValue.lastSeenVersion)
+            .putBoolean(KEY_HIDE_SHORT, newValue.hideShortTracks)
             .apply()
         _settings.value = newValue
     }
@@ -206,6 +211,7 @@ class SettingsStore(context: Context) {
         targetLoudnessDb = prefs.getInt(KEY_TARGET_DB, -18).coerceIn(-30, -6),
         checkUpdates = prefs.getBoolean(KEY_CHECK_UPDATES, true),
         lastSeenVersion = prefs.getString(KEY_LAST_SEEN_VERSION, "").orEmpty(),
+        hideShortTracks = prefs.getBoolean(KEY_HIDE_SHORT, false),
         updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
             .orEmpty().ifBlank { AppSettings().updateRepo }
     )
@@ -240,6 +246,7 @@ class SettingsStore(context: Context) {
         const val KEY_CHECK_UPDATES = "check_updates"
         const val KEY_UPDATE_REPO = "update_repo"
         const val KEY_LAST_SEEN_VERSION = "last_seen_version"
+        const val KEY_HIDE_SHORT = "hide_short_tracks"
         const val MAX_SONGS_PER_ALBUM = 10
     }
 }

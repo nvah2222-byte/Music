@@ -78,6 +78,7 @@ fun SettingsScreen(
     onSoundProfileChange: (Int) -> Unit,
     onVolumeBalanceChange: (Boolean) -> Unit,
     onTargetLoudnessDbChange: (Int) -> Unit,
+    onHideShortTracksChange: (Boolean) -> Unit,
     onCheckUpdatesChange: (Boolean) -> Unit,
     onUpdateRepoChange: (String) -> Unit,
     onCheckNow: () -> Unit,
@@ -117,6 +118,13 @@ fun SettingsScreen(
                     steps = 8
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                title = stringResource(R.string.settings_hide_short),
+                description = stringResource(R.string.settings_hide_short_desc),
+                checked = settings.hideShortTracks,
+                onCheckedChange = onHideShortTracksChange
+            )
         }
 
         Spacer(Modifier.height(12.dp))

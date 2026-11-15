@@ -22,11 +22,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
@@ -34,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,6 +83,12 @@ fun AlbumsScreen(
     onShareAlbum: (Album) -> Unit = {}
 ) {
     val allAlbums = customAlbums + albums
+    // Поиск по названию альбома/исполнителю: список один и тот же, поэтому фильтруем здесь.
+    var query by remember { mutableStateOf("") }
+    val visibleAlbums = if (query.isBlank()) allAlbums else allAlbums.filter { album ->
+        album.artist.contains(query.trim(), ignoreCase = true) ||
+            album.songs.any { it.artist.contains(query.trim(), ignoreCase = true) }
+    }
     if (allAlbums.isEmpty()) {
         Column(
             modifier = modifier
@@ -119,6 +128,35 @@ fun AlbumsScreen(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 4.dp)
     ) {
+        item(key = "search") {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.albums_search_hint)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = null)
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+        if (visibleAlbums.isEmpty()) {
+            item(key = "empty") {
+                Text(
+                    text = stringResource(R.string.albums_search_empty),
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
         item(key = "create") {
             Surface(
                 onClick = onCreateAlbum,
@@ -166,7 +204,7 @@ fun AlbumsScreen(
             }
         }
         itemsIndexed(
-            allAlbums,
+            visibleAlbums,
             // Индекс в ключе: старые бэкапы могли сохранить два альбома с одним именем,
             // а дубли ключей в LazyColumn — это краш.
             key = { index, album -> (if (album.isCustom) "custom:" else "artist:") + album.artist + "#" + index }

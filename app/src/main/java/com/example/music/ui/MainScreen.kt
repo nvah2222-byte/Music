@@ -212,6 +212,8 @@ private fun requiredStoragePermission(): String =
 
 /** С какого возраста трека запоминаем позицию (аудиокниги, лекции). */
 private const val RESUME_MIN_MS = 10 * 60 * 1000L
+/** Треки короче 30 секунд — обычно рингтоны и сигналы; их можно скрыть из библиотеки. */
+private const val SHORT_TRACK_MS = 30_000L
 private const val BACKUP_FORMAT = "music-backup"
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -246,9 +248,11 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     // Скрытые папки убираем только из показываемой библиотеки,
     // чтобы не потерять их порядок, обложки и добавленные вручную файлы.
     val hiddenFolders = settings.hiddenFolders
+    val hideShortTracks = settings.hideShortTracks
     val librarySongs = songs.filterNot { song ->
-        song.relativePath.isNotBlank() &&
-            song.relativePath.trimEnd('/') in hiddenFolders
+        (hideShortTracks && song.durationMs in 1..SHORT_TRACK_MS) ||
+            (song.relativePath.isNotBlank() &&
+                song.relativePath.trimEnd('/') in hiddenFolders)
     }
 
     // --- Разрешения ---
@@ -1768,8 +1772,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onSoundProfileChange = settingsStore::setSoundProfile,
                         onVolumeBalanceChange = settingsStore::setVolumeBalance,
                         onTargetLoudnessDbChange = settingsStore::setTargetLoudnessDb,
-                        onCheckUpdatesChange = settingsStore::setCheckUpdates,
-                        onUpdateRepoChange = settingsStore::setUpdateRepo,
+                        onHideShortTracksChange = settingsStore::setHideShortTracks,
+                        onCheckUpdatesChange = settingsStore::setCheckUpdates,                        onUpdateRepoChange = settingsStore::setUpdateRepo,
                         onCheckNow = { runUpdateCheck(manual = true) },
                         onExportBackup = { backupExportLauncher.launch("music-backup.json") },
                         onImportBackup = { showImportConfirm = true }

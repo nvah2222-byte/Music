@@ -253,6 +253,10 @@
     <string name="album_cover_dialog_title">Обложка альбома</string>
     <string name="album_cover_apply_all">Применить ко всем песням альбома</string>
     <string name="album_cover_apply">Применить</string>
+    <string name="albums_search_hint">Поиск альбома или исполнителя</string>
+    <string name="albums_search_empty">Ничего не найдено</string>
+    <string name="settings_hide_short">Скрывать треки короче 30 секунд</string>
+    <string name="settings_hide_short_desc">Рингтоны, сигналы и другие короткие файлы не попадут в библиотеку. Сами файлы не удаляются.</string>
     <string name="settings_check_now">Проверить сейчас</string>
     <string name="update_available_title">Доступна версия %1$s</string>
     <string name="update_install">Установить</string>
