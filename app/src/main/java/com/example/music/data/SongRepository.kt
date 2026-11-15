@@ -97,8 +97,8 @@ class SongRepository(context: Context) {
             val rawArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 ?: appContext.getString(R.string.unknown_artist)
             val (title, artist) = resolveTitleAndArtist(rawTitle, rawArtist, fileNameOf(uri))
-            val album = TagText.fix(
-                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM).orEmpty()
+            val album = TagText.stripLinks(
+                TagText.fix(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM).orEmpty())
             )
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 ?.toLongOrNull() ?: 0L
@@ -138,6 +138,7 @@ class SongRepository(context: Context) {
         val fixedArtist = TagText.fix(rawArtist)
         val unknown = appContext.getString(R.string.unknown_artist)
 
+        // Ссылки на сайты из названия («Неважно (hitmo.net)» → «Неважно»).
         // Тег разрушен (остались только «??????»): берём имя файла и режем «Артист - Название».
         var title = fixedTitle
         var artistFromName: String? = null
@@ -148,6 +149,8 @@ class SongRepository(context: Context) {
                 artistFromName = artistName
             }
         }
+
+        title = TagText.stripLinks(title)
 
         val artist = cleanArtistTag(fixedArtist)
         val artistMissing = artist.isBlank() ||
@@ -491,7 +494,7 @@ class SongRepository(context: Context) {
                     albumId = cursor.getLong(albumIdx),
                     title = title,
                     artist = artist,
-                    album = TagText.fix(cursor.getString(albumNameIdx) ?: ""),
+                    album = TagText.stripLinks(TagText.fix(cursor.getString(albumNameIdx) ?: "")),
                     uri = ContentUris.withAppendedId(collection, id),
                     durationText = formatDuration(durationMs),
                     durationMs = durationMs,

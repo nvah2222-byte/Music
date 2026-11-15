@@ -82,4 +82,37 @@ object TagText {
         val questions = text.count { it == '?' }
         return questions >= 3 && questions * 2 >= text.length
     }
+    private val domainRegex = Regex("""\.[a-zA-Z]{2,6}($|[/\s])""")
+    private val bracketLink = Regex(
+        """\[[^\]]*(\.[a-zA-Z]{2,6}|www\.|@|http)[^\]]*]""",
+        RegexOption.IGNORE_CASE
+    )
+    private val parenLink = Regex(
+        """\([^)]*(\.[a-zA-Z]{2,6}|www\.|@|http)[^)]*\)""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /**
+     * Убирает из названия ссылки на сайты-источники, но не трогает обычные скобки:
+     * «Неважно (hitmo.net)» → «Неважно», «Song (feat. X)» → без изменений.
+     */
+    fun stripLinks(text: String): String {
+        val withoutBrackets = text
+            .replace(bracketLink, " ")
+            .replace(parenLink, " ")
+        val words = withoutBrackets
+            .split(' ')
+            .filter { word ->
+                word.isNotBlank() &&
+                    !word.startsWith("http", ignoreCase = true) &&
+                    !word.contains("www.") &&
+                    !domainRegex.containsMatchIn(word)
+            }
+        val cleaned = words.joinToString(" ")
+            .replace(Regex("""\s{2,}"""), " ")
+            .trim()
+            .trim('-', '—', '–', '|')
+            .trim()
+        return cleaned.ifBlank { text }
+    }
 }

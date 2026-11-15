@@ -29,6 +29,17 @@ class TagTextTest {
     }
 
     @Test
+    fun siteLinksAreRemovedFromTitles() {
+        assertEquals("Неважно", TagText.stripLinks("Неважно (hitmo.net)"))
+        assertEquals("Песня", TagText.stripLinks("Песня [zaycev.net]"))
+        assertEquals("Песня", TagText.stripLinks("Песня - hitmo.net"))
+        assertEquals("Song (feat. X)", TagText.stripLinks("Song (feat. X)"))
+        assertEquals("Song (Remix)", TagText.stripLinks("Song (Remix)"))
+        assertEquals("Mr. Brightside", TagText.stripLinks("Mr. Brightside"))
+        assertEquals("Сектор Газа - 30 лет", TagText.stripLinks("Сектор Газа - 30 лет"))
+    }
+
+    @Test
     fun emptyAndAsciiAreSafe() {
         assertEquals("", TagText.fix(""))
         assertEquals("abc", TagText.fix("abc"))
