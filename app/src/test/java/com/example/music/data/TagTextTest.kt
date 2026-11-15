@@ -68,6 +68,17 @@ class TagTextTest {
     }
 
     @Test
+    fun underscoreTitlesGetSpaces() {
+        assertEquals(
+            "хмора и потемкин окраин — К",
+            TagText.expandUnderscores("хмора_и_потемкин_окраин_—_К")
+        )
+        // Строки с пробелами не трогаем: подчёркивание может быть частью ника.
+        assertEquals("stay_bottom #2016", TagText.expandUnderscores("stay_bottom #2016"))
+        assertEquals("de survivor", TagText.expandUnderscores("de_survivor"))
+    }
+
+    @Test
     fun emptyAndAsciiAreSafe() {
         assertEquals("", TagText.fix(""))
         assertEquals("abc", TagText.fix("abc"))

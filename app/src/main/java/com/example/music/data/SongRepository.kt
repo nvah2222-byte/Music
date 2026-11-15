@@ -19,6 +19,14 @@ data class CustomAlbum(
     val coverUri: String? = null
 )
 
+/** Одно прослушивание: что играло, когда началось и сколько реально звучало. */
+data class PlayEvent(
+    val songId: Long,
+    val startedAt: Long,
+    /** -1 — старый формат без замера времени. */
+    val listenedMs: Long
+)
+
 /**
  * Разбирает сохранённый альбом «имя|обложка|id1,id2» (старый формат — «имя|id1,id2»).
  * Имя читаем справа, чтобы символ «|» внутри названия не ломал альбом.
@@ -162,6 +170,8 @@ class SongRepository(context: Context) {
         }
 
         title = TagText.stripLinks(title)
+        // Тег, записанный как имя файла: «хмора_и_потемкин_окраин» → с пробелами.
+        title = TagText.expandUnderscores(title)
 
         val artist = cleanArtistTag(fixedArtist)
         val artistMissing = artist.isBlank() ||
@@ -276,30 +286,76 @@ class SongRepository(context: Context) {
             .apply()
     }
 
-    /** События прослушиваний с временем: пары (id песни, время в мс). Новые в конце. */
-    fun loadPlayEvents(): List<Pair<Long, Long>> =
+    /** События прослушиваний: id песни, начало и сколько реально прослушано. Новые в конце. */
+    fun loadPlayEvents(): List<PlayEvent> =
         prefs.getString(KEY_PLAY_EVENTS, null)
             ?.split(',')
             ?.mapNotNull { entry ->
-                val separator = entry.indexOf('|')
-                if (separator <= 0) return@mapNotNull null
-                val id = entry.substring(0, separator).toLongOrNull() ?: return@mapNotNull null
-                val time = entry.substring(separator + 1).toLongOrNull() ?: return@mapNotNull null
-                id to time
+                val parts = entry.split('|')
+                val id = parts.getOrNull(0)?.toLongOrNull() ?: return@mapNotNull null
+                val startedAt = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+                // Старый формат (id|время) не знал длительности: -1 — «неизвестно».
+                val listened = parts.getOrNull(2)?.toLongOrNull() ?: -1L
+                PlayEvent(id, startedAt, listened)
             }
             ?: emptyList()
 
     fun recordPlayEvent(id: Long) {
         val events = loadPlayEvents().toMutableList()
-        events.add(id to System.currentTimeMillis())
-        // Храним только последние события, чтобы строка не разрасталась.
+        events.add(PlayEvent(id, System.currentTimeMillis(), 0L))
+        savePlayEvents(events)
+    }
+
+    /** Досчитывает реально прослушанное время; вызывается раз в несколько секунд, пока играет. */
+    fun addListeningTime(songId: Long, deltaMs: Long) {
+        if (deltaMs <= 0) return
+        val events = loadPlayEvents().toMutableList()
+        val last = events.lastOrNull()
+        if (last != null && last.songId == songId) {
+            // У старых событий время неизвестно (-1) — начинаем считать с нуля.
+            events[events.lastIndex] =
+                last.copy(listenedMs = last.listenedMs.coerceAtLeast(0L) + deltaMs)
+        } else {
+            events.add(PlayEvent(songId, System.currentTimeMillis(), deltaMs))
+        }
+        savePlayEvents(events)
+        prefs.edit()
+            .putLong(KEY_LISTENED_TOTAL, loadListenedTotal().coerceAtLeast(0L) + deltaMs)
+            .apply()
+    }
+
+    /** Всего прослушано за всё время, мс; -1 — ещё ни разу не считали. */
+    fun loadListenedTotal(): Long = prefs.getLong(KEY_LISTENED_TOTAL, -1L)
+
+    /**
+     * Разовый перенос старой статистики: раньше время не хранилось, поэтому
+     * старые события считаем по полной длительности трека. Дальше — только факт.
+     */
+    fun seedListenedTotal(songsById: Map<Long, Song>) {
+        if (prefs.contains(KEY_LISTENED_TOTAL)) return
+        val total = loadPlayEvents().sumOf { event ->
+            if (event.listenedMs >= 0) {
+                event.listenedMs
+            } else {
+                songsById[event.songId]?.durationMs ?: 0L
+            }
+        }
+        prefs.edit().putLong(KEY_LISTENED_TOTAL, total).apply()
+    }
+
+    private fun savePlayEvents(events: List<PlayEvent>) {
+        // Храним только последние события, чтобы строка не разрасталась;
+        // суммарное время за всё время считается отдельно и не теряется.
         val trimmed = if (events.size > MAX_PLAY_EVENTS) {
             events.subList(events.size - MAX_PLAY_EVENTS, events.size)
         } else {
             events
         }
         prefs.edit()
-            .putString(KEY_PLAY_EVENTS, trimmed.joinToString(",") { "${it.first}|${it.second}" })
+            .putString(
+                KEY_PLAY_EVENTS,
+                trimmed.joinToString(",") { "${it.songId}|${it.startedAt}|${it.listenedMs}" }
+            )
             .apply()
     }
 
@@ -550,6 +606,7 @@ class SongRepository(context: Context) {
         const val KEY_COVER_PRESENCE = "cover_presence"
         const val KEY_COVER_COLORS = "cover_colors_v3"
         const val KEY_COVER_HASHES = "cover_hashes"
+        const val KEY_LISTENED_TOTAL = "listened_total_ms"
         const val KEY_POSITION_PREFIX = "position_"
         const val MAX_PLAY_EVENTS = 5000
 

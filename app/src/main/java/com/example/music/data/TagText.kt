@@ -83,6 +83,14 @@ object TagText {
         val questions = text.count { it == '?' }
         return questions >= 3 && questions * 2 >= text.length
     }
+    /**
+     * Тег-имя, записанное без пробелов через подчёркивания:
+     * «хмора_и_потемкин_окраин» → «хмора и потемкин окраин».
+     * Строки с пробелами не трогаем: «stay_bottom #2016» остаётся как есть.
+     */
+    fun expandUnderscores(text: String): String =
+        if ('_' in text && text.none { it.isWhitespace() }) text.replace('_', ' ') else text
+
     private val domainRegex = Regex("""\.[a-zA-Z]{2,6}($|[/\s])""")
     private val bracketLink = Regex(
         """\[[^\]]*(\.[a-zA-Z]{2,6}|www\.|@|http)[^\]]*]""",

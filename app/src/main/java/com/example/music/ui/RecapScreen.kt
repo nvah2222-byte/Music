@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.music.R
 import com.example.music.Song
+import com.example.music.data.PlayEvent
 
 private const val DAY_MS = 24L * 3600_000L
 private const val WEEK_MS = 7L * DAY_MS
@@ -36,7 +37,9 @@ private const val MONTH_MS = 30L * DAY_MS
 @Composable
 fun RecapScreen(
     songs: List<Song>,
-    playEvents: List<Pair<Long, Long>>,
+    playEvents: List<PlayEvent>,
+    playCounts: Map<Long, Int>,
+    listenedTotalMs: Long,
     modifier: Modifier = Modifier
 ) {
     var period by remember { mutableIntStateOf(3) }
@@ -49,10 +52,14 @@ fun RecapScreen(
         else -> 0L
     }
     val songsById = songs.associateBy { it.id }
-    val counts = playEvents
-        .filter { it.second >= cutoff }
-        .groupingBy { it.first }
-        .eachCount()
+    val allTime = period == 3
+    val periodEvents = playEvents.filter { it.startedAt >= cutoff }
+    // За всё время берём полные счётчики (они не обрезаются), за период — события окна.
+    val counts = if (allTime) {
+        playCounts.filterKeys { songsById.containsKey(it) }
+    } else {
+        periodEvents.groupingBy { it.songId }.eachCount()
+    }
     val unknownArtist = stringResource(R.string.unknown_artist)
 
     fun isUnknown(name: String): Boolean =
@@ -102,8 +109,16 @@ fun RecapScreen(
         }
 
         val totalPlays = counts.values.sum()
-        val minutes = counts.entries
-            .sumOf { (songsById[it.key]?.durationMs ?: 0L) * it.value } / 60_000
+        // Минуты — реально прослушанное время, а не длительность треков.
+        // Старые события без замера (-1) считаем по длительности.
+        val minutes = if (allTime) {
+            listenedTotalMs.coerceAtLeast(0L) / 60_000
+        } else {
+            periodEvents.sumOf { event ->
+                if (event.listenedMs >= 0) event.listenedMs
+                else songsById[event.songId]?.durationMs ?: 0L
+            } / 60_000
+        }
         val topSong = counts.maxByOrNull { it.value }?.key?.let { songsById[it] }
         val topArtist = counts.entries
             .groupBy { songsById[it.key]?.artist ?: "" }

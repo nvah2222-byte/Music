@@ -235,7 +235,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     var customAlbums by remember { mutableStateOf(emptyList<CustomAlbum>()) }
     var showCreateAlbum by remember { mutableStateOf(false) }
     var addToAlbumTarget by remember { mutableStateOf<CustomAlbum?>(null) }
-    var playEvents by remember { mutableStateOf(emptyList<Pair<Long, Long>>()) }
+    var playEvents by remember { mutableStateOf(repository.loadPlayEvents()) }
+    var listenedTotalMs by remember { mutableStateOf(repository.loadListenedTotal().coerceAtLeast(0L)) }
     var showWheel by remember { mutableStateOf(false) }
     var wheelCandidates by remember { mutableStateOf(emptyList<Song>()) }
     var pendingAlbumCoverChange by remember { mutableStateOf<CustomAlbum?>(null) }
@@ -327,6 +328,10 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
             historyIds = repository.loadHistory()
             customAlbums = repository.loadCustomAlbums()
             playEvents = repository.loadPlayEvents()
+            withContext(Dispatchers.IO) {
+                repository.seedListenedTotal(loaded.associateBy { it.id })
+            }
+            listenedTotalMs = repository.loadListenedTotal().coerceAtLeast(0L)
         }
     }
 
@@ -484,9 +489,17 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         currentPosition = actual
                     }
                 }
-                if (SystemClock.elapsedRealtime() - lastSavedAt >= 5000L) {
-                    lastSavedAt = SystemClock.elapsedRealtime()
+                val now = SystemClock.elapsedRealtime()
+                val elapsed = now - lastSavedAt
+                if (elapsed >= 5000L) {
+                    lastSavedAt = now
                     saveCurrentPosition()
+                    // Реально прослушанное время — для честных минут в «Итогах».
+                    player?.currentMediaItem?.mediaId?.toLongOrNull()?.let { id ->
+                        repository.addListeningTime(id, elapsed)
+                        playEvents = repository.loadPlayEvents()
+                        listenedTotalMs = repository.loadListenedTotal().coerceAtLeast(0L)
+                    }
                 }
                 delay(100)
             }
@@ -1846,6 +1859,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     is Screen.Recap -> RecapScreen(
                         songs = librarySongs,
                         playEvents = playEvents,
+                        playCounts = playCounts,
+                        listenedTotalMs = listenedTotalMs,
                         modifier = Modifier.padding(padding)
                     )
 

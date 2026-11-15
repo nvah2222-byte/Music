@@ -95,14 +95,16 @@ fun QueueSheet(player: MediaController, onDismiss: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { player.seekTo(index, 0L) }
-                                .padding(start = 20.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     text = metadata.title?.toString()
                                         ?: stringResource(R.string.unknown_title),
-                                    maxLines = 1,
+                                    // Две строки: иначе длинные названия обрезаются одинаково
+                                    // и треки в очереди не отличить друг от друга.
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
                                     color = if (current) {
