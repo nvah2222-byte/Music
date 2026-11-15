@@ -3,11 +3,13 @@ package com.example.music.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +25,12 @@ import coil.size.Size
 
 /** Розовый цвет сердечек избранного. */
 val FavoritePink = Color(0xFFE91E63)
+
+/** Круглые обложки: включается настройкой «Круглые обложки». */
+val LocalRoundCovers = compositionLocalOf { false }
+
+/** Компактные строки списков: меньше обложки и отступы. */
+val LocalCompactRows = compositionLocalOf { false }
 
 /**
  * Обложка с цветным плейсхолдером: пока картинка не загрузилась (или её нет),
@@ -43,7 +51,7 @@ fun CoverBox(
     val hue = ((seed % 360) + 360) % 360
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(if (LocalRoundCovers.current && cornerRadius != 0.dp) CircleShape else RoundedCornerShape(cornerRadius))
             .background(Color.hsv(hue.toFloat(), 0.55f, 0.45f)),
         contentAlignment = Alignment.Center
     ) {

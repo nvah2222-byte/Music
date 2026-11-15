@@ -93,6 +93,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -212,8 +213,6 @@ private fun requiredStoragePermission(): String =
 
 /** С какого возраста трека запоминаем позицию (аудиокниги, лекции). */
 private const val RESUME_MIN_MS = 10 * 60 * 1000L
-/** Треки короче 30 секунд — обычно рингтоны и сигналы; их можно скрыть из библиотеки. */
-private const val SHORT_TRACK_MS = 30_000L
 private const val BACKUP_FORMAT = "music-backup"
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -248,9 +247,9 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     // Скрытые папки убираем только из показываемой библиотеки,
     // чтобы не потерять их порядок, обложки и добавленные вручную файлы.
     val hiddenFolders = settings.hiddenFolders
-    val hideShortTracks = settings.hideShortTracks
+    val minTrackMs = settings.minTrackSeconds * 1000L
     val librarySongs = songs.filterNot { song ->
-        (hideShortTracks && song.durationMs in 1..SHORT_TRACK_MS) ||
+        (minTrackMs > 0L && song.durationMs in 1 until minTrackMs) ||
             (song.relativePath.isNotBlank() &&
                 song.relativePath.trimEnd('/') in hiddenFolders)
     }
@@ -1198,6 +1197,10 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
             }
         }
     ) {
+        CompositionLocalProvider(
+            LocalRoundCovers provides settings.roundCovers,
+            LocalCompactRows provides settings.compactRows
+        ) {
         if (screen is Screen.Player) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -1772,7 +1775,9 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onSoundProfileChange = settingsStore::setSoundProfile,
                         onVolumeBalanceChange = settingsStore::setVolumeBalance,
                         onTargetLoudnessDbChange = settingsStore::setTargetLoudnessDb,
-                        onHideShortTracksChange = settingsStore::setHideShortTracks,
+                        onMinTrackSecondsChange = settingsStore::setMinTrackSeconds,
+                        onRoundCoversChange = settingsStore::setRoundCovers,
+                        onCompactRowsChange = settingsStore::setCompactRows,
                         onCheckUpdatesChange = settingsStore::setCheckUpdates,                        onUpdateRepoChange = settingsStore::setUpdateRepo,
                         onCheckNow = { runUpdateCheck(manual = true) },
                         onExportBackup = { backupExportLauncher.launch("music-backup.json") },
@@ -1782,6 +1787,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     is Screen.Player -> Unit
                 }
             }
+        }
         }
     }
 
@@ -2383,8 +2389,9 @@ private fun ReorderableCollectionItemScope.SongRow(
                 onLongClick = if (selectionMode) onToggleSelection else onLongClick
             )
     ) {
+        val compact = LocalCompactRows.current
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(if (compact) 6.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (selectionMode) {
@@ -2407,8 +2414,8 @@ private fun ReorderableCollectionItemScope.SongRow(
                 requestSize = 150,
                 cornerRadius = 4.dp,
                 modifier = Modifier
-                    .size(50.dp)
-                    .padding(start = 8.dp)
+                    .size(if (compact) 38.dp else 50.dp)
+                    .padding(start = if (compact) 4.dp else 8.dp)
             )
             Column(
                 modifier = Modifier

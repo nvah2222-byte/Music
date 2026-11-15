@@ -59,8 +59,12 @@ data class AppSettings(
     val checkUpdates: Boolean = true,
     /** Репозиторий GitHub в виде owner/repo для проверки релизов. */
     val updateRepo: String = "nvah2222-byte/Music",
-    /** Скрывать из библиотеки треки короче 30 секунд (рингтоны, сигналы). */
-    val hideShortTracks: Boolean = false,
+    /** Не показывать треки короче N секунд (0 — показывать все). */
+    val minTrackSeconds: Int = 0,
+    /** Круглые обложки вместо скруглённых квадратов. */
+    val roundCovers: Boolean = false,
+    /** Компактные строки в списках: меньше обложки и отступы. */
+    val compactRows: Boolean = false,
     /** Версия, которую видели в прошлый запуск: чтобы показать «обновление установлено». */
     val lastSeenVersion: String = ""
 )
@@ -132,7 +136,11 @@ class SettingsStore(context: Context) {
 
     fun setLastSeenVersion(version: String) = update { it.copy(lastSeenVersion = version) }
 
-    fun setHideShortTracks(enabled: Boolean) = update { it.copy(hideShortTracks = enabled) }
+    fun setMinTrackSeconds(seconds: Int) = update { it.copy(minTrackSeconds = seconds.coerceIn(0, 120)) }
+
+    fun setRoundCovers(enabled: Boolean) = update { it.copy(roundCovers = enabled) }
+
+    fun setCompactRows(enabled: Boolean) = update { it.copy(compactRows = enabled) }
 
     fun exportPrefs(): JSONObject = dumpPrefs(prefs)
 
@@ -175,7 +183,9 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_CHECK_UPDATES, newValue.checkUpdates)
             .putString(KEY_UPDATE_REPO, newValue.updateRepo)
             .putString(KEY_LAST_SEEN_VERSION, newValue.lastSeenVersion)
-            .putBoolean(KEY_HIDE_SHORT, newValue.hideShortTracks)
+            .putInt(KEY_MIN_TRACK_SECONDS, newValue.minTrackSeconds)
+            .putBoolean(KEY_ROUND_COVERS, newValue.roundCovers)
+            .putBoolean(KEY_COMPACT_ROWS, newValue.compactRows)
             .apply()
         _settings.value = newValue
     }
@@ -211,7 +221,9 @@ class SettingsStore(context: Context) {
         targetLoudnessDb = prefs.getInt(KEY_TARGET_DB, -18).coerceIn(-30, -6),
         checkUpdates = prefs.getBoolean(KEY_CHECK_UPDATES, true),
         lastSeenVersion = prefs.getString(KEY_LAST_SEEN_VERSION, "").orEmpty(),
-        hideShortTracks = prefs.getBoolean(KEY_HIDE_SHORT, false),
+        minTrackSeconds = prefs.getInt(KEY_MIN_TRACK_SECONDS, 0).coerceIn(0, 120),
+        roundCovers = prefs.getBoolean(KEY_ROUND_COVERS, false),
+        compactRows = prefs.getBoolean(KEY_COMPACT_ROWS, false),
         updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
             .orEmpty().ifBlank { AppSettings().updateRepo }
     )
@@ -246,7 +258,9 @@ class SettingsStore(context: Context) {
         const val KEY_CHECK_UPDATES = "check_updates"
         const val KEY_UPDATE_REPO = "update_repo"
         const val KEY_LAST_SEEN_VERSION = "last_seen_version"
-        const val KEY_HIDE_SHORT = "hide_short_tracks"
+        const val KEY_MIN_TRACK_SECONDS = "min_track_seconds"
+        const val KEY_ROUND_COVERS = "round_covers"
+        const val KEY_COMPACT_ROWS = "compact_rows"
         const val MAX_SONGS_PER_ALBUM = 10
     }
 }

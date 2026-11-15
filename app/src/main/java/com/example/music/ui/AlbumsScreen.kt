@@ -401,6 +401,7 @@ internal fun SimpleSongRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val hasMenu = onShare != null || onDelete != null || onChangeCover != null
+    val compact = LocalCompactRows.current
 
     Surface(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -409,7 +410,7 @@ internal fun SimpleSongRow(
                     onClick = onClick,
                     onLongClick = if (hasMenu) ({ menuExpanded = true }) else null
                 )
-                .padding(12.dp),
+                .padding(if (compact) 6.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CoverBox(
@@ -418,7 +419,7 @@ internal fun SimpleSongRow(
                 imageLoader = imageLoader,
                 requestSize = 128,
                 cornerRadius = 6.dp,
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(if (compact) 38.dp else 44.dp)
             )
             Column(
                 modifier = Modifier

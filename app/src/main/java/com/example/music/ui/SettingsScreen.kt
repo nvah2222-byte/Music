@@ -78,7 +78,9 @@ fun SettingsScreen(
     onSoundProfileChange: (Int) -> Unit,
     onVolumeBalanceChange: (Boolean) -> Unit,
     onTargetLoudnessDbChange: (Int) -> Unit,
-    onHideShortTracksChange: (Boolean) -> Unit,
+    onRoundCoversChange: (Boolean) -> Unit,
+    onCompactRowsChange: (Boolean) -> Unit,
+    onMinTrackSecondsChange: (Int) -> Unit,
     onCheckUpdatesChange: (Boolean) -> Unit,
     onUpdateRepoChange: (String) -> Unit,
     onCheckNow: () -> Unit,
@@ -119,11 +121,24 @@ fun SettingsScreen(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            SwitchRow(
-                title = stringResource(R.string.settings_hide_short),
-                description = stringResource(R.string.settings_hide_short_desc),
-                checked = settings.hideShortTracks,
-                onCheckedChange = onHideShortTracksChange
+            Text(
+                text = if (settings.minTrackSeconds == 0) {
+                    stringResource(R.string.settings_min_track_off)
+                } else {
+                    stringResource(R.string.settings_min_track_value, settings.minTrackSeconds)
+                },
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Slider(
+                value = settings.minTrackSeconds.toFloat(),
+                onValueChange = { onMinTrackSecondsChange(it.roundToInt()) },
+                valueRange = 0f..120f,
+                steps = 23
+            )
+            Text(
+                text = stringResource(R.string.settings_min_track_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
             )
         }
 
@@ -180,6 +195,20 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_dynamic_color_desc),
                 checked = settings.dynamicColor,
                 onCheckedChange = onDynamicColorChange
+            )
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                title = stringResource(R.string.settings_round_covers),
+                description = stringResource(R.string.settings_round_covers_desc),
+                checked = settings.roundCovers,
+                onCheckedChange = onRoundCoversChange
+            )
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                title = stringResource(R.string.settings_compact_rows),
+                description = stringResource(R.string.settings_compact_rows_desc),
+                checked = settings.compactRows,
+                onCheckedChange = onCompactRowsChange
             )
         }
 
