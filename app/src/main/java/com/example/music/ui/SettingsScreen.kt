@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -37,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +47,11 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.music.R
 import com.example.music.data.AppSettings
 import com.example.music.ui.theme.DefaultAccentColor
@@ -55,6 +62,9 @@ fun SettingsScreen(
     settings: AppSettings,
     appVersion: String,
     updatedFrom: String,
+    /** Обложка текущего трека для живого предпросмотра фона. */
+    previewArtwork: Any? = null,
+    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     onAutoAlbumsChange: (Boolean) -> Unit,
     onMinSongsChange: (Int) -> Unit,
@@ -75,6 +85,7 @@ fun SettingsScreen(
     onCrossfadeMsChange: (Int) -> Unit,
     onCoverRotationChange: (Boolean) -> Unit,
     onBackgroundRotationChange: (Boolean) -> Unit,
+    onPlayerBackgroundAlphaChange: (Int) -> Unit,
     onSoundProfileChange: (Int) -> Unit,
     onVolumeBalanceChange: (Boolean) -> Unit,
     onTargetLoudnessDbChange: (Int) -> Unit,
@@ -275,6 +286,28 @@ fun SettingsScreen(
                     onCheckedChange = onBackgroundRotationChange
                 )
             }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(
+                    R.string.settings_background_alpha,
+                    settings.playerBackgroundAlpha
+                ),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(Modifier.height(8.dp))
+            // Живой предпросмотр: тот же размытый фон, что и в полноэкранном плеере.
+            BackgroundPreview(
+                artwork = previewArtwork,
+                imageLoader = imageLoader,
+                alphaPercent = settings.playerBackgroundAlpha
+            )
+            Spacer(Modifier.height(4.dp))
+            Slider(
+                value = settings.playerBackgroundAlpha.toFloat(),
+                onValueChange = { onPlayerBackgroundAlphaChange(it.roundToInt()) },
+                valueRange = 0f..100f,
+                steps = 19
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -612,4 +645,37 @@ private fun AccentDot(
             .clickable(onClick = onClick)
             .semantics { contentDescription = description }
     )
+}
+
+/** Живой предпросмотр размытого фона: видно, как выглядит прозрачность ещё до открытия плеера. */
+@Composable
+private fun BackgroundPreview(artwork: Any?, imageLoader: ImageLoader, alphaPercent: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        if (artwork != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(artwork)
+                    .size(64, 64)
+                    .build(),
+                imageLoader = imageLoader,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(24.dp)
+                    .alpha(alphaPercent.coerceIn(0, 100) / 100f)
+            )
+        }
+        Text(
+            text = stringResource(R.string.settings_background_alpha_preview),
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
 }

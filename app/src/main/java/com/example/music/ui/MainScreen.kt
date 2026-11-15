@@ -1265,6 +1265,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     onOpenQueue = { showQueue = true },
                     coverRotation = settings.coverRotation,
                     rotateBackground = settings.backgroundRotation,
+                    backgroundAlpha = settings.playerBackgroundAlpha,
                     onClose = { screen = screenBeforePlayer }
                 )
             }
@@ -1783,6 +1784,9 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         settings = settings,
                         appVersion = appVersion,
                         updatedFrom = updatedFrom,
+                        previewArtwork = currentSong?.customCover ?: currentSong?.uri
+                            ?: player?.currentMediaItem?.mediaMetadata?.artworkUri,
+                        imageLoader = imageLoader,
                         modifier = Modifier.padding(padding),
                         onAutoAlbumsChange = settingsStore::setAutoAlbums,
                         onMinSongsChange = settingsStore::setMinSongsForAlbum,
@@ -1803,6 +1807,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onCrossfadeMsChange = settingsStore::setCrossfadeMs,
                         onCoverRotationChange = settingsStore::setCoverRotation,
                         onBackgroundRotationChange = settingsStore::setBackgroundRotation,
+                        onPlayerBackgroundAlphaChange = settingsStore::setPlayerBackgroundAlpha,
                         onSoundProfileChange = settingsStore::setSoundProfile,
                         onVolumeBalanceChange = settingsStore::setVolumeBalance,
                         onTargetLoudnessDbChange = settingsStore::setTargetLoudnessDb,

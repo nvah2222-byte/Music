@@ -65,6 +65,8 @@ data class AppSettings(
     val roundCovers: Boolean = false,
     /** Компактные строки в списках: меньше обложки и отступы. */
     val compactRows: Boolean = false,
+    /** Прозрачность размытого фона полноэкранного плеера, % (0..100). */
+    val playerBackgroundAlpha: Int = 80,
     /** Версия, которую видели в прошлый запуск: чтобы показать «обновление установлено». */
     val lastSeenVersion: String = ""
 )
@@ -142,6 +144,8 @@ class SettingsStore(context: Context) {
 
     fun setCompactRows(enabled: Boolean) = update { it.copy(compactRows = enabled) }
 
+    fun setPlayerBackgroundAlpha(value: Int) = update { it.copy(playerBackgroundAlpha = value.coerceIn(0, 100)) }
+
     fun exportPrefs(): JSONObject = dumpPrefs(prefs)
 
     fun importPrefs(json: JSONObject) {
@@ -186,6 +190,7 @@ class SettingsStore(context: Context) {
             .putInt(KEY_MIN_TRACK_SECONDS, newValue.minTrackSeconds)
             .putBoolean(KEY_ROUND_COVERS, newValue.roundCovers)
             .putBoolean(KEY_COMPACT_ROWS, newValue.compactRows)
+            .putInt(KEY_PLAYER_BG_ALPHA, newValue.playerBackgroundAlpha)
             .apply()
         _settings.value = newValue
     }
@@ -224,6 +229,7 @@ class SettingsStore(context: Context) {
         minTrackSeconds = prefs.getInt(KEY_MIN_TRACK_SECONDS, 0).coerceIn(0, 120),
         roundCovers = prefs.getBoolean(KEY_ROUND_COVERS, false),
         compactRows = prefs.getBoolean(KEY_COMPACT_ROWS, false),
+        playerBackgroundAlpha = prefs.getInt(KEY_PLAYER_BG_ALPHA, 80).coerceIn(0, 100),
         updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
             .orEmpty().ifBlank { AppSettings().updateRepo }
     )
@@ -261,6 +267,7 @@ class SettingsStore(context: Context) {
         const val KEY_MIN_TRACK_SECONDS = "min_track_seconds"
         const val KEY_ROUND_COVERS = "round_covers"
         const val KEY_COMPACT_ROWS = "compact_rows"
+        const val KEY_PLAYER_BG_ALPHA = "player_bg_alpha"
         const val MAX_SONGS_PER_ALBUM = 10
     }
 }
