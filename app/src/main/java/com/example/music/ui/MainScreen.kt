@@ -364,6 +364,8 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var isSeeking by remember { mutableStateOf(false) }
+    // Куда пользователь перемотал: пока плеер не догнал позицию, ползунок не откатываем назад.
+    var seekTarget by remember { mutableStateOf<Long?>(null) }
     var currentUri by remember { mutableStateOf<Uri?>(null) }
     // 0 — таймер выключен; иначе сколько треков осталось до паузы.
     var songsUntilStop by remember { mutableIntStateOf(PlaybackTimers.songsUntilStop(context)) }
@@ -455,7 +457,14 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         while (isPlaying) {
             // Пока пользователь тянет ползунок, не перезаписываем позицию.
             if (!isSeeking) {
-                currentPosition = player?.currentPosition ?: 0L
+                val actual = player?.currentPosition ?: 0L
+                val target = seekTarget
+                if (target != null && kotlin.math.abs(actual - target) > 1000L) {
+                    currentPosition = target
+                } else {
+                    seekTarget = null
+                    currentPosition = actual
+                }
             }
             if (SystemClock.elapsedRealtime() - lastSavedAt >= 5000L) {
                 lastSavedAt = SystemClock.elapsedRealtime()
@@ -1264,7 +1273,11 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                             onPlayPause = { if (isPlaying) player.pause() else player.play() },
                             onNext = { player.seekToNext() },
                             onPrevious = { player.seekToPrevious() },
-                            onSeek = { position -> player.seekTo(position) },
+                            onSeek = { position ->
+                    player.seekTo(position)
+                    seekTarget = position
+                    currentPosition = position
+                },
                             onToggleShuffle = { player.shuffleModeEnabled = !shuffleEnabled },
                             onCycleRepeat = { player.repeatMode = nextRepeatMode(repeatMode) },
                             onScrubbingChange = { isSeeking = it }

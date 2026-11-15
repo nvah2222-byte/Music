@@ -112,6 +112,8 @@ fun PlayerScreen(
     var currentItem by remember { mutableStateOf(player?.currentMediaItem) }
     var playbackSpeed by remember { mutableFloatStateOf(player?.playbackParameters?.speed ?: 1f) }
     var isSeeking by remember { mutableStateOf(false) }
+    // Куда пользователь перемотал: пока плеер не догнал позицию, ползунок не откатываем назад.
+    var seekTarget by remember { mutableStateOf<Long?>(null) }
 
     // --- Эквалайзер ---
     var equalizer by remember { mutableStateOf<Equalizer?>(null) }
@@ -173,7 +175,14 @@ fun PlayerScreen(
         while (isPlaying) {
             // Пока пользователь тянет ползунок, не перезаписываем позицию.
             if (!isSeeking) {
-                currentPosition = player?.currentPosition ?: 0L
+                val actual = player?.currentPosition ?: 0L
+                val target = seekTarget
+                if (target != null && kotlin.math.abs(actual - target) > 1000L) {
+                    currentPosition = target
+                } else {
+                    seekTarget = null
+                    currentPosition = actual
+                }
             }
             // Длительность может стать известна позже готовности плеера — держим её в актуальном виде.
             val total = player?.duration?.coerceAtLeast(0L) ?: 0L
@@ -486,7 +495,12 @@ fun PlayerScreen(
                 isSeeking = true
             },
             onValueChangeFinished = {
-                dragValue?.let { player?.seekTo(it.toLong()) }
+                dragValue?.let {
+                    val target = it.toLong()
+                    player?.seekTo(target)
+                    seekTarget = target
+                    currentPosition = target
+                }
                 dragValue = null
                 isSeeking = false
             },
