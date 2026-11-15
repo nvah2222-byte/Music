@@ -93,6 +93,9 @@ fun SettingsScreen(
     onTargetLoudnessDbChange: (Int) -> Unit,
     onRoundCoversChange: (Boolean) -> Unit,
     onCompactRowsChange: (Boolean) -> Unit,
+    onCoverGroupModeChange: (Int) -> Unit,
+    onTitleMarqueeSpeedChange: (Int) -> Unit,
+    onCoverGroupButtonVisibleChange: (Boolean) -> Unit,
     onMinTrackSecondsChange: (Int) -> Unit,
     onCheckUpdatesChange: (Boolean) -> Unit,
     onUpdateRepoChange: (String) -> Unit,
@@ -222,6 +225,45 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_compact_rows_desc),
                 checked = settings.compactRows,
                 onCheckedChange = onCompactRowsChange
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.settings_marquee),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = if (settings.titleMarqueeSpeed == 0) {
+                    stringResource(R.string.settings_marquee_off)
+                } else {
+                    stringResource(R.string.settings_marquee_value, settings.titleMarqueeSpeed)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Slider(
+                value = settings.titleMarqueeSpeed.toFloat(),
+                onValueChange = {
+                    onTitleMarqueeSpeedChange((it / 10f).roundToInt() * 10)
+                },
+                valueRange = 0f..100f,
+                steps = 9
+            )
+            Text(
+                text = stringResource(R.string.settings_marquee_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Spacer(Modifier.height(16.dp))
+            CoverGroupPicker(
+                mode = settings.coverGroupMode,
+                onChange = onCoverGroupModeChange
+            )
+            Spacer(Modifier.height(12.dp))
+            SwitchRow(
+                title = stringResource(R.string.settings_cover_group_button),
+                description = stringResource(R.string.settings_cover_group_button_desc),
+                checked = settings.coverGroupButtonVisible,
+                onCheckedChange = onCoverGroupButtonVisibleChange
             )
         }
 

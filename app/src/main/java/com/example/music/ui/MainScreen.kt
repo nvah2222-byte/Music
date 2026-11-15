@@ -57,6 +57,10 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
@@ -74,6 +78,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -102,6 +107,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -167,10 +173,37 @@ sealed interface Screen : java.io.Serializable {
     data class FolderDetail(val path: String) : Screen
     data object Albums : Screen
     data class AlbumDetail(val artist: String) : Screen
+    /** Песни одной обложки (режим «Отдельные экраны»). */
+    data class CoverGroup(val key: String, val title: String) : Screen
     data object Stats : Screen
     data object Recap : Screen
     data object Settings : Screen
     data object Player : Screen
+}
+
+/** Строка списка песен: заголовок группы одинаковых обложек или сама песня. */
+private sealed interface SongListEntry {
+    data class Header(
+        val key: String,
+        val title: String,
+        val subtitle: String?,
+        val count: Int,
+        val cover: Song
+    ) : SongListEntry
+    data class Track(val song: Song) : SongListEntry
+}
+
+/** Название группы: общий исполнитель, иначе общий альбом, иначе «Разные исполнители». */
+private fun coverGroupTitle(songs: List<Song>, mixedLabel: String): String {
+    val artist = songs.firstOrNull()?.artist?.trim().orEmpty()
+    if (artist.isNotEmpty() && songs.all { it.artist.trim().equals(artist, ignoreCase = true) }) {
+        return artist
+    }
+    val album = songs.firstOrNull()?.album?.trim().orEmpty()
+    if (album.isNotEmpty() && songs.all { it.album.trim().equals(album, ignoreCase = true) }) {
+        return album
+    }
+    return mixedLabel
 }
 
 /** Пункт боковой шторки; key хранится в настройках, чтобы порядок переживал перезапуск. */
@@ -1068,6 +1101,13 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         }
     }
 
+    /** Ключ «та же обложка»: своя картинка или хэш встроенной картинки. */
+    fun coverGroupKey(song: Song): String = when {
+        song.customCover != null -> "c:${song.customCover}"
+        coverHashes[song.id] != null -> "h:${coverHashes[song.id]}"
+        else -> "n:${song.id}"
+    }
+
     val sortedSongs = remember(
         settings.trackSort, librarySongs, coverPresence, coverColors, coverHashes, favorites, playCounts, shuffledOrder
     ) {
@@ -1078,22 +1118,17 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         4 -> librarySongs.sortedByDescending { it.durationMs }
         5, 12 -> {
             // Ключ «та же обложка»: своя картинка или хэш встроенной картинки.
-            fun coverKey(song: Song): String = when {
-                song.customCover != null -> "c:${song.customCover}"
-                coverHashes[song.id] != null -> "h:${coverHashes[song.id]}"
-                else -> "n:${song.id}"
-            }
             val counts = HashMap<String, Int>()
             librarySongs.forEach { song ->
-                val key = coverKey(song)
+                val key = coverGroupKey(song)
                 counts[key] = (counts[key] ?: 0) + 1
             }
             val bySize = if (settings.trackSort == 12) {
                 // «Мало → много»: сначала одиночки, большие группы в конце.
-                compareBy<Song> { counts[coverKey(it)] ?: 0 }
+                compareBy<Song> { counts[coverGroupKey(it)] ?: 0 }
             } else {
                 // «Много → мало»: самые большие группы обложек сверху.
-                compareByDescending<Song> { counts[coverKey(it)] ?: 0 }
+                compareByDescending<Song> { counts[coverGroupKey(it)] ?: 0 }
             }
             librarySongs.sortedWith(
                 bySize.thenBy {
@@ -1136,6 +1171,53 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         stringResource(R.string.sort_album),
         stringResource(R.string.sort_covers_asc)
     )
+
+    // --- Группы одинаковых обложек (сортировка «Обложки») ---
+    val coverSortActive = settings.trackSort == 5 || settings.trackSort == 12
+    val coverGrouped = settings.coverGroupEnabled && coverSortActive
+    val coverGroupMode = settings.coverGroupMode
+    val mixedGroupLabel = stringResource(R.string.cover_group_mixed)
+    // Какие группы раскрыты вручную; по умолчанию крупные свёрнуты.
+    val expandedCoverGroups = remember { mutableStateMapOf<String, Boolean>() }
+    var coverGroupVersion by remember { mutableIntStateOf(0) }
+    val coverEntries: List<SongListEntry> = remember(
+        sortedSongs, coverGrouped, coverGroupMode, coverGroupVersion
+    ) {
+        if (!coverGrouped) {
+            emptyList()
+        } else {
+            sortedSongs.groupBy { coverGroupKey(it) }.flatMap { (key, group) ->
+                val header = SongListEntry.Header(
+                    key = key,
+                    title = coverGroupTitle(group, mixedGroupLabel),
+                    subtitle = group.map { it.album.trim() }
+                        .distinct()
+                        .singleOrNull()
+                        ?.takeIf { it.isNotBlank() && !it.equals(group.first().artist.trim(), true) },
+                    count = group.size,
+                    cover = group.first()
+                )
+                val expanded = expandedCoverGroups[key] ?: (group.size <= 4)
+                when (coverGroupMode) {
+                    // A: крупные свёрнуты, тап раскрывает; одиночки — без заголовка.
+                    0 -> when {
+                        group.size == 1 -> listOf(SongListEntry.Track(group.first()))
+                        expanded -> listOf(header) + group.map { SongListEntry.Track(it) }
+                        else -> listOf(header)
+                    }
+                    // C: в списке только группы, песни — на отдельном экране.
+                    2 -> listOf(header)
+                    // B и D: заголовок + все песни.
+                    else -> listOf(header) + group.map { SongListEntry.Track(it) }
+                }
+            }
+        }
+    }
+    val displayEntries = remember(sortedSongs, coverEntries, coverGrouped) {
+        if (coverGrouped) coverEntries else sortedSongs.map { SongListEntry.Track(it) }
+    }
+    // В режиме «Отдельные экраны» выбирать отдельные песни из общего списка нечем.
+    val coverGroupScreens = coverGrouped && coverGroupMode == 2
 
     // --- Быстрая прокрутка по алфавиту ---
     val scrollerText: (Song) -> String = when (settings.trackSort) {
@@ -1351,6 +1433,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onBack = {
                             screen = when (screen) {
                                 is Screen.FolderDetail -> Screen.Folders
+                                is Screen.CoverGroup -> Screen.Songs
                                 else -> Screen.Albums
                             }
                         }
@@ -1455,7 +1538,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                                 leadingIcon = { Icon(Icons.Default.Search, null) },
                                 singleLine = true
                             )
-                            if (visibleSongs == null && !selectionMode) {
+                            if (visibleSongs == null && !selectionMode && !coverGroupScreens) {
                                 IconButton(onClick = {
                                     searchQuery = ""
                                     showMenuIndex = -1
@@ -1467,6 +1550,32 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                                     )
                                 }
                             }
+                            if (coverSortActive && !selectionMode &&
+                                settings.coverGroupButtonVisible
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        settingsStore.setCoverGroupEnabled(
+                                            !settings.coverGroupEnabled
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        if (settings.coverGroupEnabled) {
+                                            Icons.Default.Layers
+                                        } else {
+                                            Icons.Default.LayersClear
+                                        },
+                                        stringResource(
+                                            if (settings.coverGroupEnabled) {
+                                                R.string.cover_group_toggle_on
+                                            } else {
+                                                R.string.cover_group_toggle_off
+                                            }
+                                        )
+                                    )
+                                }
+                            }
                             Box {
                                 IconButton(onClick = { sortMenuExpanded = true }) {
                                     Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort))
@@ -1475,7 +1584,46 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                                     expanded = sortMenuExpanded,
                                     onDismissRequest = { sortMenuExpanded = false }
                                 ) {
+                                    // Первый блок — только группы обложек: много→мало и мало→много.
+                                    Text(
+                                        text = stringResource(R.string.sort_section_covers),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.padding(
+                                            start = 16.dp,
+                                            end = 16.dp,
+                                            top = 8.dp,
+                                            bottom = 4.dp
+                                        )
+                                    )
+                                    listOf(5, 12).forEach { index ->
+                                        DropdownMenuItem(
+                                            text = { Text(sortLabels[index]) },
+                                            leadingIcon = {
+                                                if (index == settings.trackSort) {
+                                                    Icon(Icons.Default.Check, null)
+                                                }
+                                            },
+                                            onClick = {
+                                                settingsStore.setTrackSort(index)
+                                                sortMenuExpanded = false
+                                            }
+                                        )
+                                    }
+                                    HorizontalDivider()
+                                    Text(
+                                        text = stringResource(R.string.sort_section_other),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.padding(
+                                            start = 16.dp,
+                                            end = 16.dp,
+                                            top = 8.dp,
+                                            bottom = 4.dp
+                                        )
+                                    )
                                     sortLabels.forEachIndexed { index, label ->
+                                        if (index == 5 || index == 12) return@forEachIndexed
                                         DropdownMenuItem(
                                             text = { Text(label) },
                                             leadingIcon = {
@@ -1572,39 +1720,86 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                                     state = lazyListState,
                                     modifier = Modifier.fillMaxSize()
                                 ) {
-                                    itemsIndexed(sortedSongs, key = { _, song -> song.id }) { index, song ->
-                                        ReorderableItem(reorderableState, key = song.id) { isDragging ->
-                                            SongRow(
-                                                song = song,
-                                                isDragging = isDragging,
-                                                menuExpanded = showMenuIndex == index,
+                                    itemsIndexed(
+                                        displayEntries,
+                                        key = { _, entry ->
+                                            when (entry) {
+                                                is SongListEntry.Header -> "g:" + entry.key
+                                                is SongListEntry.Track -> entry.song.id
+                                            }
+                                        }
+                                    ) { index, entry ->
+                                        when (entry) {
+                                            is SongListEntry.Header -> CoverGroupHeader(
+                                                cover = entry.cover,
+                                                title = entry.title,
+                                                subtitle = entry.subtitle,
+                                                count = entry.count,
                                                 imageLoader = imageLoader,
-                                                isFavorite = song.id in favorites,
-                                                isSelected = song.id in selectedIds,
-                                                selectionMode = selectionMode,
-                                                showDragHandle = settings.trackSort == 0 && !selectionMode,
-                                                onClick = { playSong(sortedSongs, song) },
-                                                onToggleSelection = {
-                                                    selectedIds = if (song.id in selectedIds) {
-                                                        selectedIds - song.id
-                                                    } else {
-                                                        selectedIds + song.id
+                                                mode = coverGroupMode,
+                                                expanded = expandedCoverGroups[entry.key]
+                                                    ?: (entry.count <= 4),
+                                                onClick = {
+                                                    when (coverGroupMode) {
+                                                        0 -> {
+                                                            expandedCoverGroups[entry.key] =
+                                                                !(expandedCoverGroups[entry.key]
+                                                                    ?: (entry.count <= 4))
+                                                            coverGroupVersion++
+                                                        }
+                                                        2 -> screen = Screen.CoverGroup(
+                                                            entry.key,
+                                                            entry.title
+                                                        )
                                                     }
-                                                },
-                                                onLongClick = { showMenuIndex = index },
-                                                onDismissMenu = { showMenuIndex = -1 },
-                                                onChangeCover = {
-                                                    showMenuIndex = -1
-                                                    pendingCoverChangeId = song.id
-                                                    coverPickerLauncher.launch(arrayOf("image/*"))
-                                                },
-                                                onDelete = {
-                                                    showMenuIndex = -1
-                                                    pendingDeleteId = song.id
-                                                },
-                                                onToggleFavorite = { toggleFavorite(song.id) },
-                                                onShare = { shareSong(song) }
+                                                }
                                             )
+
+                                            is SongListEntry.Track -> {
+                                                val song = entry.song
+                                                ReorderableItem(
+                                                    reorderableState,
+                                                    key = song.id
+                                                ) { isDragging ->
+                                                    SongRow(
+                                                        song = song,
+                                                        isDragging = isDragging,
+                                                        menuExpanded = showMenuIndex == index,
+                                                        imageLoader = imageLoader,
+                                                        isFavorite = song.id in favorites,
+                                                        isSelected = song.id in selectedIds,
+                                                        selectionMode = selectionMode,
+                                                        showDragHandle = settings.trackSort == 0 &&
+                                                            !selectionMode,
+                                                        showArtist = coverGroupMode != 3,
+                                                        onClick = { playSong(sortedSongs, song) },
+                                                        onToggleSelection = {
+                                                            selectedIds = if (song.id in selectedIds) {
+                                                                selectedIds - song.id
+                                                            } else {
+                                                                selectedIds + song.id
+                                                            }
+                                                        },
+                                                        onLongClick = { showMenuIndex = index },
+                                                        onDismissMenu = { showMenuIndex = -1 },
+                                                        onChangeCover = {
+                                                            showMenuIndex = -1
+                                                            pendingCoverChangeId = song.id
+                                                            coverPickerLauncher.launch(
+                                                                arrayOf("image/*")
+                                                            )
+                                                        },
+                                                        onDelete = {
+                                                            showMenuIndex = -1
+                                                            pendingDeleteId = song.id
+                                                        },
+                                                        onToggleFavorite = {
+                                                            toggleFavorite(song.id)
+                                                        },
+                                                        onShare = { shareSong(song) }
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1796,6 +1991,26 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         }
                     }
 
+                    is Screen.CoverGroup -> {
+                        val groupSongs = remember(current.key, sortedSongs) {
+                            sortedSongs.filter { coverGroupKey(it) == current.key }
+                        }
+                        CoverGroupScreen(
+                            songs = groupSongs,
+                            imageLoader = imageLoader,
+                            favorites = favorites,
+                            modifier = Modifier.padding(padding),
+                            onPlay = { song -> playSong(groupSongs, song) },
+                            onToggleFavorite = ::toggleFavorite,
+                            onShare = ::shareSong,
+                            onDelete = { song -> pendingDeleteId = song.id },
+                            onChangeCover = { song ->
+                                pendingCoverChangeId = song.id
+                                coverPickerLauncher.launch(arrayOf("image/*"))
+                            }
+                        )
+                    }
+
                     is Screen.Folders -> FoldersScreen(
                         songs = songs.toList(),
                         hiddenFolders = hiddenFolders,
@@ -1898,6 +2113,9 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onMinTrackSecondsChange = settingsStore::setMinTrackSeconds,
                         onRoundCoversChange = settingsStore::setRoundCovers,
                         onCompactRowsChange = settingsStore::setCompactRows,
+                        onCoverGroupModeChange = settingsStore::setCoverGroupMode,
+                        onTitleMarqueeSpeedChange = settingsStore::setTitleMarqueeSpeed,
+                        onCoverGroupButtonVisibleChange = settingsStore::setCoverGroupButtonVisible,
                         onCheckUpdatesChange = settingsStore::setCheckUpdates,                        onUpdateRepoChange = settingsStore::setUpdateRepo,
                         onCheckNow = { runUpdateCheck(manual = true) },
                         onExportBackup = { backupExportLauncher.launch("music-backup.json") },
@@ -2448,7 +2666,126 @@ private fun AppTopBar(
             }
         )
 
+        is Screen.CoverGroup -> CenterAlignedTopAppBar(
+            title = {
+                Text(
+                    text = screen.title,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                }
+            }
+        )
+
         is Screen.Player -> Unit
+    }
+}
+
+/** Заголовок группы одинаковых обложек: обложка, название, число треков. */
+@Composable
+private fun CoverGroupHeader(
+    cover: Song,
+    title: String,
+    subtitle: String?,
+    count: Int,
+    imageLoader: ImageLoader,
+    mode: Int,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = mode == 0 || mode == 2, onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CoverBox(
+                seed = cover.id,
+                data = cover.customCover ?: cover.uri,
+                imageLoader = imageLoader,
+                requestSize = 120,
+                cornerRadius = 6.dp,
+                modifier = Modifier.size(44.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = buildString {
+                        if (subtitle != null) {
+                            append(subtitle)
+                            append(" · ")
+                        }
+                        append(pluralStringResource(R.plurals.tracks_count, count, count))
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            when (mode) {
+                0 -> Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowUp
+                    } else {
+                        Icons.Default.KeyboardArrowDown
+                    },
+                    contentDescription = stringResource(
+                        if (expanded) R.string.cover_group_collapse_action
+                        else R.string.cover_group_expand
+                    ),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                2 -> Icon(
+                    Icons.Default.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.cover_group_expand),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+    }
+}
+
+/** Режим «Отдельные экраны»: песни одной обложки. */
+@Composable
+private fun CoverGroupScreen(
+    songs: List<Song>,
+    imageLoader: ImageLoader,
+    favorites: Set<Long>,
+    modifier: Modifier = Modifier,
+    onPlay: (Song) -> Unit,
+    onToggleFavorite: (Long) -> Unit,
+    onShare: (Song) -> Unit,
+    onDelete: (Song) -> Unit,
+    onChangeCover: (Song) -> Unit
+) {
+    LazyColumn(modifier = modifier.fillMaxSize()) {
+        items(songs, key = { it.id }) { song ->
+            SimpleSongRow(
+                song = song,
+                imageLoader = imageLoader,
+                isFavorite = song.id in favorites,
+                onToggleFavorite = { onToggleFavorite(song.id) },
+                onClick = { onPlay(song) },
+                onShare = { onShare(song) },
+                onDelete = { onDelete(song) },
+                onChangeCover = { onChangeCover(song) }
+            )
+        }
     }
 }
 
@@ -2464,6 +2801,7 @@ private fun ReorderableCollectionItemScope.SongRow(
     selectionMode: Boolean = false,
     onToggleSelection: () -> Unit = {},
     showDragHandle: Boolean = true,
+    showArtist: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDismissMenu: () -> Unit,
@@ -2520,19 +2858,20 @@ private fun ReorderableCollectionItemScope.SongRow(
                     .padding(start = 12.dp)
                     .weight(1f)
             ) {
-                Text(
-                    song.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                MarqueeText(
+                    text = song.title,
+                    modifier = Modifier.padding(end = 8.dp),
                     fontWeight = FontWeight.Medium
                 )
-                Text(
-                    song.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (showArtist) {
+                    Text(
+                        song.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Text(song.durationText, style = MaterialTheme.typography.labelSmall)
             IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {

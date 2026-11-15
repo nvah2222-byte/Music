@@ -67,6 +67,15 @@ data class AppSettings(
     val compactRows: Boolean = false,
     /** Размытость фона полноэкранного плеера, % (0..100). */
     val playerBackgroundBlur: Int = 50,
+    /** Как показывать группы одинаковых обложек: 0 — сворачивать, 1 — заголовки,
+     *  2 — отдельные экраны, 3 — компактно без сворачивания. */
+    val coverGroupMode: Int = 0,
+    /** Скорость бегущей строки названий, dp/с; 0 — выключено. */
+    val titleMarqueeSpeed: Int = 30,
+    /** Показывать группы одинаковых обложек (кнопка вкл/выкл в списке песен). */
+    val coverGroupEnabled: Boolean = true,
+    /** Показывать саму кнопку групп в шапке списка. */
+    val coverGroupButtonVisible: Boolean = true,
     /** Версия, которую видели в прошлый запуск: чтобы показать «обновление установлено». */
     val lastSeenVersion: String = ""
 )
@@ -146,6 +155,17 @@ class SettingsStore(context: Context) {
 
     fun setPlayerBackgroundBlur(value: Int) = update { it.copy(playerBackgroundBlur = value.coerceIn(0, 100)) }
 
+    fun setCoverGroupMode(mode: Int) = update { it.copy(coverGroupMode = mode.coerceIn(0, 3)) }
+
+    fun setTitleMarqueeSpeed(speed: Int) =
+        update { it.copy(titleMarqueeSpeed = speed.coerceIn(0, 100)) }
+
+    fun setCoverGroupEnabled(enabled: Boolean) =
+        update { it.copy(coverGroupEnabled = enabled) }
+
+    fun setCoverGroupButtonVisible(visible: Boolean) =
+        update { it.copy(coverGroupButtonVisible = visible) }
+
     fun exportPrefs(): JSONObject = dumpPrefs(prefs)
 
     fun importPrefs(json: JSONObject) {
@@ -191,6 +211,10 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_ROUND_COVERS, newValue.roundCovers)
             .putBoolean(KEY_COMPACT_ROWS, newValue.compactRows)
             .putInt(KEY_PLAYER_BG_BLUR, newValue.playerBackgroundBlur)
+            .putInt(KEY_COVER_GROUP_MODE, newValue.coverGroupMode)
+            .putInt(KEY_TITLE_MARQUEE_SPEED, newValue.titleMarqueeSpeed)
+            .putBoolean(KEY_COVER_GROUP_ENABLED, newValue.coverGroupEnabled)
+            .putBoolean(KEY_COVER_GROUP_BUTTON, newValue.coverGroupButtonVisible)
             .apply()
         _settings.value = newValue
     }
@@ -230,6 +254,10 @@ class SettingsStore(context: Context) {
         roundCovers = prefs.getBoolean(KEY_ROUND_COVERS, false),
         compactRows = prefs.getBoolean(KEY_COMPACT_ROWS, false),
         playerBackgroundBlur = prefs.getInt(KEY_PLAYER_BG_BLUR, 50).coerceIn(0, 100),
+        coverGroupMode = prefs.getInt(KEY_COVER_GROUP_MODE, 0).coerceIn(0, 3),
+        titleMarqueeSpeed = prefs.getInt(KEY_TITLE_MARQUEE_SPEED, 30).coerceIn(0, 100),
+        coverGroupEnabled = prefs.getBoolean(KEY_COVER_GROUP_ENABLED, true),
+        coverGroupButtonVisible = prefs.getBoolean(KEY_COVER_GROUP_BUTTON, true),
         updateRepo = prefs.getString(KEY_UPDATE_REPO, AppSettings().updateRepo)
             .orEmpty().ifBlank { AppSettings().updateRepo }
     )
@@ -268,6 +296,10 @@ class SettingsStore(context: Context) {
         const val KEY_ROUND_COVERS = "round_covers"
         const val KEY_COMPACT_ROWS = "compact_rows"
         const val KEY_PLAYER_BG_BLUR = "player_bg_blur"
+        const val KEY_COVER_GROUP_MODE = "cover_group_mode"
+        const val KEY_TITLE_MARQUEE_SPEED = "title_marquee_speed"
+        const val KEY_COVER_GROUP_ENABLED = "cover_group_enabled"
+        const val KEY_COVER_GROUP_BUTTON = "cover_group_button"
         const val MAX_SONGS_PER_ALBUM = 10
     }
 }

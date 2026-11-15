@@ -41,7 +41,11 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = settings.dynamicColor,
                 accentHue = settings.accentHue
             ) {
-                MainScreen(controller, settingsStore)
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.example.music.ui.LocalMarqueeSpeed provides settings.titleMarqueeSpeed
+                ) {
+                    MainScreen(controller, settingsStore)
+                }
             }
         }
     }

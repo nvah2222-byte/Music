@@ -426,10 +426,9 @@ internal fun SimpleSongRow(
                     .padding(start = 12.dp)
                     .weight(1f)
             ) {
-                Text(
+                MarqueeText(
                     text = song.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(end = 8.dp),
                     fontWeight = FontWeight.Medium
                 )
                 Text(
