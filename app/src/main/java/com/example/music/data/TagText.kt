@@ -65,7 +65,8 @@ object TagText {
     }
     /** «Буерак - Неважно (hitmo.net).mp3» → название «Неважно (hitmo.net)» и артист «Буерак». */
     fun splitFileName(fileName: String): Pair<String, String?> {
-        val base = fileName.substringBeforeLast('.').trim()
+        // В именах файлов подчёркивания заменяют пробелы: «Kino_-_Kogda_tvoya» → «Kino - Kogda tvoya».
+        val base = fileName.substringBeforeLast('.').replace('_', ' ').trim()
         val parts = base.split(" - ", limit = 2)
         return if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
             parts[1].trim() to parts[0].trim()

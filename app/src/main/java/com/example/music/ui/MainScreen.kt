@@ -107,6 +107,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -150,6 +151,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -462,25 +464,32 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         onDispose { player?.removeListener(listener) }
     }
 
-    LaunchedEffect(isPlaying) {
-        var lastSavedAt = SystemClock.elapsedRealtime()
-        while (isPlaying) {
-            // Пока пользователь тянет ползунок, не перезаписываем позицию.
-            if (!isSeeking) {
-                val actual = player?.currentPosition ?: 0L
-                val target = seekTarget
-                if (target != null && kotlin.math.abs(actual - target) > 1000L) {
-                    currentPosition = target
-                } else {
-                    seekTarget = null
-                    currentPosition = actual
+    // Позицию обновляем, пока играет. Ключ — player, а не isPlaying: на стыке
+    // кроссфейда isPlaying на миг становится false и тут же true, Compose видит
+    // только итоговое true, и эффект с ключом isPlaying больше не перезапускался —
+    // ползунок замирал на 0:00 до ручной паузы. snapshotFlow ловит даже короткое false.
+    LaunchedEffect(player) {
+        snapshotFlow { isPlaying }.collectLatest { playing ->
+            if (!playing) return@collectLatest
+            var lastSavedAt = SystemClock.elapsedRealtime()
+            while (true) {
+                // Пока пользователь тянет ползунок, не перезаписываем позицию.
+                if (!isSeeking) {
+                    val actual = player?.currentPosition ?: 0L
+                    val target = seekTarget
+                    if (target != null && kotlin.math.abs(actual - target) > 1000L) {
+                        currentPosition = target
+                    } else {
+                        seekTarget = null
+                        currentPosition = actual
+                    }
                 }
+                if (SystemClock.elapsedRealtime() - lastSavedAt >= 5000L) {
+                    lastSavedAt = SystemClock.elapsedRealtime()
+                    saveCurrentPosition()
+                }
+                delay(100)
             }
-            if (SystemClock.elapsedRealtime() - lastSavedAt >= 5000L) {
-                lastSavedAt = SystemClock.elapsedRealtime()
-                saveCurrentPosition()
-            }
-            delay(100)
         }
     }
 
@@ -1138,6 +1147,14 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
 
     // --- Перетаскивание ---
     val lazyListState = rememberLazyListState()
+    // После смены сортировки показываем начало списка, а не середину алфавита.
+    var lastSort by rememberSaveable { mutableIntStateOf(settings.trackSort) }
+    LaunchedEffect(settings.trackSort) {
+        if (settings.trackSort != lastSort) {
+            lastSort = settings.trackSort
+            lazyListState.scrollToItem(0)
+        }
+    }
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         // Индексы относятся к видимому списку: ищем песни по id,
         // потому что в полном списке могут быть скрытые папки.
@@ -1154,7 +1171,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     }
 
     // --- Навигация ---
-    val addedSongs = librarySongs.filter { it.isCustom }
+    val addedSongs = remember(librarySongs) { librarySongs.filter { it.isCustom } }
     var screen by rememberSaveable { mutableStateOf<Screen>(Screen.Songs) }
     /** Экран, с которого открыли полноэкранный плеер: возвращаемся именно туда. */
     var screenBeforePlayer by rememberSaveable { mutableStateOf<Screen>(Screen.Songs) }
@@ -1337,7 +1354,9 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     }
                 },
                 bottomBar = {
-                    if (player != null) {
+                    // Без текущего трека мини-плеер не показываем: иначе при запуске
+                    // висит пустая полоса с «0:00 / 0:00» и кнопками.
+                    if (player != null && currentSong != null) {
                         BottomControlBar(
                             isPlaying = isPlaying,
                             shuffleEnabled = shuffleEnabled,
@@ -2901,7 +2920,7 @@ private fun DuplicatesDialog(
             ) {
                 Text(
                     text = stringResource(R.string.delete) +
-                        if (selected.size != songs.size) " ()" else "",
+                        if (selected.size != songs.size) " (${selected.size})" else "",
                     color = MaterialTheme.colorScheme.error
                 )
             }

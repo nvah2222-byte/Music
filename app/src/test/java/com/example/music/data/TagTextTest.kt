@@ -26,6 +26,15 @@ class TagTextTest {
             TagText.splitFileName("Буерак - Неважно (hitmo.net).mp3")
         )
         assertEquals("track" to null, TagText.splitFileName("track.mp3"))
+        // Скачанные файлы часто пишут подчёркивания вместо пробелов.
+        assertEquals(
+            "Kogda tvoya devushka bolna" to "Kino",
+            TagText.splitFileName("Kino_-_Kogda_tvoya_devushka_bolna.mp3")
+        )
+        assertEquals(
+            "ot chekushki stanet vsem teplej" to null,
+            TagText.splitFileName("ot_chekushki_stanet_vsem_teplej.mp3")
+        )
     }
 
     @Test
@@ -37,6 +46,25 @@ class TagTextTest {
         assertEquals("Song (Remix)", TagText.stripLinks("Song (Remix)"))
         assertEquals("Mr. Brightside", TagText.stripLinks("Mr. Brightside"))
         assertEquals("Сектор Газа - 30 лет", TagText.stripLinks("Сектор Газа - 30 лет"))
+    }
+
+    @Test
+    fun skySoundLinksAreRemoved() {
+        assertEquals(
+            "Kogda tvoya devushka bolna",
+            TagText.stripLinks("Kogda tvoya devushka bolna (SkySound.cc)")
+        )
+        assertEquals(
+            "Kogda tvoya devushka bolna",
+            TagText.stripLinks("Kogda tvoya devushka bolna (SkySound7.com)")
+        )
+    }
+
+    @Test
+    fun fileNameWithSiteLinkIsCleaned() {
+        val (title, artist) = TagText.splitFileName("Kino_-_Kogda_tvoya_devushka_bolna_(SkySound.cc).mp3")
+        assertEquals("Kino", artist)
+        assertEquals("Kogda tvoya devushka bolna", TagText.stripLinks(title))
     }
 
     @Test

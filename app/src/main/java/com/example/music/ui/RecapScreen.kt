@@ -40,7 +40,8 @@ fun RecapScreen(
     modifier: Modifier = Modifier
 ) {
     var period by remember { mutableIntStateOf(3) }
-    val now = remember { System.currentTimeMillis() }
+    // Не запоминаем: иначе «День» остаётся привязанным к моменту открытия экрана.
+    val now = System.currentTimeMillis()
     val cutoff = when (period) {
         0 -> now - DAY_MS
         1 -> now - WEEK_MS

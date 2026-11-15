@@ -62,8 +62,11 @@ fun StatsScreen(
             .take(5)
     }
     val songsById = remember(songs) { songs.associateBy { it.id } }
-    val topPlayed = remember(playCounts) {
-        playCounts.toList().sortedByDescending { it.second }.take(5)
+    val topPlayed = remember(playCounts, songsById) {
+        playCounts.toList()
+            .filter { (id, _) -> songsById.containsKey(id) }
+            .sortedByDescending { it.second }
+            .take(5)
     }
     val recent = remember(historyIds, songsById) {
         historyIds.mapNotNull { songsById[it] }.take(5)

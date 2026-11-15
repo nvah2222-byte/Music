@@ -142,6 +142,17 @@ class SongRepository(context: Context) {
         // Тег разрушен (остались только «??????»): берём имя файла и режем «Артист - Название».
         var title = fixedTitle
         var artistFromName: String? = null
+        // Название в теге совпало с именем файла: это не тег, а имя —
+        // чистим подчёркивания и режем «Артист - Название».
+        val fileBase = fallbackName?.substringBeforeLast('.')?.trim()
+        if (fileBase != null && fileBase.isNotBlank() &&
+            fixedTitle.trim().equals(fileBase, ignoreCase = true)
+        ) {
+            // splitFileName сам отрежет последнее расширение (.mp3).
+            val (fromName, artistName) = TagText.splitFileName(fallbackName)
+            if (fromName.isNotBlank()) title = fromName
+            artistFromName = artistName
+        }
         if (title.none { it.isLetterOrDigit() } || TagText.looksBroken(title)) {
             fallbackName?.takeIf { it.isNotBlank() }?.let { name ->
                 val (fromName, artistName) = TagText.splitFileName(name)

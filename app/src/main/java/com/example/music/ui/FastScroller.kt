@@ -1,6 +1,7 @@
 package com.example.music.ui
 
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,10 @@ fun FastScroller(
                         scrollToLetterAt(change.position.y)
                     }
                 )
+            }
+            // Обычный тап по букве тоже должен прыгать к ней (drag срабатывает только после сдвига).
+            .pointerInput(letters, letterHeightPx) {
+                detectTapGestures { offset -> scrollToLetterAt(offset.y) }
             },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
