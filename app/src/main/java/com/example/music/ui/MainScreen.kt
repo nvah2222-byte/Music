@@ -2143,53 +2143,31 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     }
 
     if (pendingDuplicates.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { pendingDuplicates = emptyList() },
-            title = { Text(stringResource(R.string.duplicates_found_title)) },
-            text = {
-                Text(stringResource(R.string.duplicates_found_message, pendingDuplicates.size))
+        DuplicatesDialog(
+            title = stringResource(R.string.duplicates_found_title),
+            message = stringResource(R.string.duplicates_found_message, pendingDuplicates.size),
+            songs = pendingDuplicates,
+            onDelete = { targets ->
+                deleteSongs(targets)
+                pendingDuplicates = emptyList()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteSongs(pendingDuplicates)
-                    pendingDuplicates = emptyList()
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDuplicates = emptyList() }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+            onDismiss = { pendingDuplicates = emptyList() }
         )
     }
 
     if (pendingDownloadsDuplicates.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { pendingDownloadsDuplicates = emptyList() },
-            title = { Text(stringResource(R.string.downloads_duplicates_found_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        R.string.downloads_duplicates_found_message,
-                        pendingDownloadsDuplicates.size
-                    )
-                )
+        DuplicatesDialog(
+            title = stringResource(R.string.downloads_duplicates_found_title),
+            message = stringResource(
+                R.string.downloads_duplicates_found_message,
+                pendingDownloadsDuplicates.size
+            ),
+            songs = pendingDownloadsDuplicates,
+            onDelete = { targets ->
+                deleteSongs(targets)
+                pendingDownloadsDuplicates = emptyList()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteSongs(pendingDownloadsDuplicates)
-                    pendingDownloadsDuplicates = emptyList()
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDownloadsDuplicates = emptyList() }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+            onDismiss = { pendingDownloadsDuplicates = emptyList() }
         )
     }
 
@@ -2815,4 +2793,92 @@ private fun PermissionRequiredScreen(
             Text(stringResource(R.string.open_settings))
         }
     }
+}
+
+/** Список дублей с галочками: видно, какие именно песни будут удалены, и можно снять лишние. */
+@Composable
+private fun DuplicatesDialog(
+    title: String,
+    message: String,
+    songs: List<Song>,
+    onDelete: (List<Song>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selected by remember(songs) { mutableStateOf(songs.map { it.id }.toSet()) }
+    // Имя файла: по нему проще понять, что это за копия, если тег битый.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val fileNames = remember(songs) {
+        songs.associate { song ->
+            song.id to (runCatching {
+                context.contentResolver.query(
+                    song.uri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null, null, null
+                )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            }.getOrNull() ?: song.relativePath)
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                Text(message)
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    songs.forEach { song ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = song.id in selected,
+                                onCheckedChange = { checked ->
+                                    selected = if (checked) selected + song.id else selected - song.id
+                                }
+                            )
+                            Column(Modifier.padding(start = 4.dp)) {
+                                val fileName = fileNames[song.id].orEmpty()
+                                // Битый тег («??????») показываем как имя файла — так понятнее.
+                                val displayTitle = if (song.title.none { it.isLetterOrDigit() } && fileName.isNotBlank()) {
+                                    fileName.substringBeforeLast('.')
+                                } else {
+                                    song.title
+                                }
+                                Text(
+                                    text = displayTitle,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = fileNames[song.id] ?: song.relativePath,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = selected.isNotEmpty(),
+                onClick = { onDelete(songs.filter { it.id in selected }) }
+            ) {
+                Text(
+                    text = stringResource(R.string.delete) +
+                        if (selected.size != songs.size) " ()" else "",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    )
 }
