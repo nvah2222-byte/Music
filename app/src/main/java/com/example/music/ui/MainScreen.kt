@@ -133,6 +133,7 @@ import com.example.music.data.AlbumArchiveFormat
 import com.example.music.data.AlbumArchiver
 import com.example.music.data.ArchiveImporter
 import com.example.music.data.CustomAlbum
+import com.example.music.data.CoverColorSampler
 import com.example.music.data.PlaybackTimers
 import com.example.music.data.SettingsStore
 import com.example.music.data.SongRepository
@@ -248,10 +249,13 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     // чтобы не потерять их порядок, обложки и добавленные вручную файлы.
     val hiddenFolders = settings.hiddenFolders
     val minTrackMs = settings.minTrackSeconds * 1000L
-    val librarySongs = songs.filterNot { song ->
-        (minTrackMs > 0L && song.durationMs in 1 until minTrackMs) ||
-            (song.relativePath.isNotBlank() &&
-                song.relativePath.trimEnd('/') in hiddenFolders)
+    // Список кэшируется: иначе каждая перерисовка заново фильтрует и сортирует 1000+ треков.
+    val librarySongs = remember(songs.toList(), hiddenFolders, minTrackMs) {
+        songs.filterNot { song ->
+            (minTrackMs > 0L && song.durationMs in 1 until minTrackMs) ||
+                (song.relativePath.isNotBlank() &&
+                    song.relativePath.trimEnd('/') in hiddenFolders)
+        }
     }
 
     // --- Разрешения ---
@@ -987,6 +991,28 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     val shuffledOrder = remember(librarySongs.size) { librarySongs.map { it.id }.shuffled() }
     val unknownArtistName = context.getString(R.string.unknown_artist)
 
+    // Оттенки обложек для сортировки: считаем в фоне и кэшируем в настройках.
+    var coverColors by remember { mutableStateOf(repository.loadCoverColors()) }
+    LaunchedEffect(settings.trackSort, librarySongs.size) {
+        if (settings.trackSort != 5) return@LaunchedEffect
+        val missing = librarySongs.filter { it.id !in coverColors }
+        if (missing.isEmpty()) return@LaunchedEffect
+        val fresh = HashMap<Long, Int>()
+        missing.forEachIndexed { index, song ->
+            CoverColorSampler.sample(context, song)?.let { fresh[song.id] = it }
+            if (fresh.size >= 25) {
+                coverColors = coverColors + fresh
+                repository.saveCoverColors(coverColors)
+                fresh.clear()
+            }
+            if (index % 10 == 0) delay(1)
+        }
+        if (fresh.isNotEmpty()) {
+            coverColors = coverColors + fresh
+            repository.saveCoverColors(coverColors)
+        }
+    }
+
     /** Ключ «по обложке»: свои обложки → настоящие альбомы → по исполнителю → остальное. */
     fun albumCoverKey(song: Song): String {
         if (song.customCover != null) return "0|custom"
@@ -999,13 +1025,17 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         }
     }
 
-    val sortedSongs = when (settings.trackSort) {
+    val sortedSongs = remember(
+        settings.trackSort, librarySongs, coverPresence, coverColors, favorites, playCounts, shuffledOrder
+    ) {
+        when (settings.trackSort) {
         1 -> librarySongs.sortedBy { it.title.lowercase() }
         2 -> librarySongs.sortedByDescending { it.title.lowercase() }
         3 -> librarySongs.sortedBy { it.durationMs }
         4 -> librarySongs.sortedByDescending { it.durationMs }
         5 -> librarySongs.sortedWith(
             compareByDescending<Song> { coverPresence[it.id] == true }
+                .thenBy { coverColors[it.id] ?: 360 }
                 .thenBy { albumCoverKey(it) }
                 .thenBy { it.title.lowercase() }
         )
@@ -1026,6 +1056,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
             compareBy<Song> { it.album.lowercase() }.thenBy { it.title.lowercase() }
         )
         else -> librarySongs.toList()
+    }
     }
     val sortLabels = listOf(
         stringResource(R.string.sort_default),

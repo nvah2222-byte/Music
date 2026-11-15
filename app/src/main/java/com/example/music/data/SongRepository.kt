@@ -333,6 +333,25 @@ class SongRepository(context: Context) {
             .apply()
     }
 
+    /** Кэш оттенка обложки (0..359) для сортировки «по обложке». */
+    fun loadCoverColors(): Map<Long, Int> =
+        prefs.getStringSet(KEY_COVER_COLORS, emptySet()).orEmpty().mapNotNull { entry ->
+            val separator = entry.indexOf('|')
+            if (separator <= 0) return@mapNotNull null
+            val id = entry.substring(0, separator).toLongOrNull() ?: return@mapNotNull null
+            val hue = entry.substring(separator + 1).toIntOrNull() ?: return@mapNotNull null
+            id to hue
+        }.toMap()
+
+    fun saveCoverColors(colors: Map<Long, Int>) {
+        prefs.edit()
+            .putStringSet(
+                KEY_COVER_COLORS,
+                colors.map { (id, hue) -> "$id|$hue" }.toSet()
+            )
+            .apply()
+    }
+
     /**
      * Кандидаты на удаление: лишние копии песен, лежащие в системных «Загрузках»,
      * если у песни есть дубль (то же название, исполнитель и длительность).
@@ -462,6 +481,7 @@ class SongRepository(context: Context) {
         const val KEY_PLAY_EVENTS = "play_events"
         const val KEY_CUSTOM_ALBUMS = "custom_albums"
         const val KEY_COVER_PRESENCE = "cover_presence"
+        const val KEY_COVER_COLORS = "cover_colors"
         const val KEY_POSITION_PREFIX = "position_"
         const val MAX_PLAY_EVENTS = 5000
 
