@@ -127,8 +127,11 @@ class SongRepository(context: Context) {
      * - если название тоже начинается с «Исполнитель - », убираем дубль из названия.
      */
     private fun resolveTitleAndArtist(rawTitle: String, rawArtist: String): Pair<String, String> {
+        // Битые кодировки в тегах: «聚袇敲敷獗» → «Пасха».
+        val fixedTitle = TagText.fix(rawTitle)
+        val fixedArtist = TagText.fix(rawArtist)
         val unknown = appContext.getString(R.string.unknown_artist)
-        val artist = cleanArtistTag(rawArtist)
+        val artist = cleanArtistTag(fixedArtist)
         val artistMissing = artist.isBlank() ||
             artist.equals("<unknown>", ignoreCase = true) ||
             artist.equals("unknown", ignoreCase = true) ||
@@ -137,19 +140,19 @@ class SongRepository(context: Context) {
 
         if (!artistMissing && !junkArtist) {
             // Артист в теге нормальный; если название дублирует его, чистим название.
-            val parsed = splitArtistFromTitle(rawTitle)
+            val parsed = splitArtistFromTitle(fixedTitle)
             if (parsed != null && normalizeTitle(parsed.first) == normalizeTitle(artist)) {
                 return parsed
             }
-            return rawTitle to artist
+            return fixedTitle to artist
         }
 
-        val parsed = splitArtistFromTitle(rawTitle)
+        val parsed = splitArtistFromTitle(fixedTitle)
         if (parsed != null) return parsed
 
         // Артист не нашёлся, а в теге сайт или <unknown>: помечаем как неизвестного,
         // чтобы он не попадал в альбомы и итоги под чужим именем.
-        return rawTitle to unknown
+        return fixedTitle to unknown
     }
 
     /** Убирает из имени артиста ссылки на сайты: «Артист [zaycev.net]» → «Артист». */
@@ -438,7 +441,7 @@ class SongRepository(context: Context) {
                     albumId = cursor.getLong(albumIdx),
                     title = title,
                     artist = artist,
-                    album = cursor.getString(albumNameIdx) ?: "",
+                    album = TagText.fix(cursor.getString(albumNameIdx) ?: ""),
                     uri = ContentUris.withAppendedId(collection, id),
                     durationText = formatDuration(durationMs),
                     durationMs = durationMs,
