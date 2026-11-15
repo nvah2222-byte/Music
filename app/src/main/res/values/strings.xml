@@ -260,8 +260,8 @@
     <string name="settings_min_track_desc">Рингтоны и сигналы не попадут в библиотеку. Сами файлы не удаляются; 0 — показывать всё.</string>
     <string name="settings_round_covers">Круглые обложки</string>
     <string name="settings_round_covers_desc">Обложки в списках и плеере становятся круглыми.</string>
-    <string name="settings_background_alpha">Прозрачность фона плеера: %1$d%%</string>
-    <string name="settings_background_alpha_preview">Так будет выглядеть фон</string>
+    <string name="settings_background_blur">Размытость фона плеера: %1$d%%</string>
+    <string name="settings_background_blur_preview">Так будет выглядеть фон</string>
     <string name="settings_compact_rows">Компактные строки</string>
     <string name="settings_compact_rows_desc">Меньше обложки и отступы — в список влезает больше треков.</string>
     <string name="settings_check_now">Проверить сейчас</string>

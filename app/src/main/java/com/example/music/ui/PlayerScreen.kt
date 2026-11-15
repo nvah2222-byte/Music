@@ -103,8 +103,8 @@ fun PlayerScreen(
     onOpenQueue: () -> Unit = {},
     coverRotation: Boolean = true,
     rotateBackground: Boolean = false,
-    /** Прозрачность размытого фона в полноэкранном плеере, % (0..100). */
-    backgroundAlpha: Int = 80
+    /** Размытость фона в полноэкранном плеере, % (0..100). */
+    backgroundBlur: Int = 50
 ) {
     var isPlaying by remember { mutableStateOf(player?.isPlaying == true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -278,8 +278,8 @@ fun PlayerScreen(
                         scaleX = 1.6f
                         scaleY = 1.6f
                     }
-                    .blur(50.dp)
-                    .alpha(backgroundAlpha.coerceIn(0, 100) / 100f)
+                    .blur((backgroundBlur.coerceIn(0, 100) / 2f).dp)
+                    .alpha(0.8f)
             )
         }
         // Затемнение к низу: обложка видна, а текст и кнопки читаются в любой теме.

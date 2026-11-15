@@ -1,5 +1,6 @@
 package com.example.music.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -85,7 +87,7 @@ fun SettingsScreen(
     onCrossfadeMsChange: (Int) -> Unit,
     onCoverRotationChange: (Boolean) -> Unit,
     onBackgroundRotationChange: (Boolean) -> Unit,
-    onPlayerBackgroundAlphaChange: (Int) -> Unit,
+    onPlayerBackgroundBlurChange: (Int) -> Unit,
     onSoundProfileChange: (Int) -> Unit,
     onVolumeBalanceChange: (Boolean) -> Unit,
     onTargetLoudnessDbChange: (Int) -> Unit,
@@ -289,8 +291,8 @@ fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(
-                    R.string.settings_background_alpha,
-                    settings.playerBackgroundAlpha
+                    R.string.settings_background_blur,
+                    settings.playerBackgroundBlur
                 ),
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -299,12 +301,12 @@ fun SettingsScreen(
             BackgroundPreview(
                 artwork = previewArtwork,
                 imageLoader = imageLoader,
-                alphaPercent = settings.playerBackgroundAlpha
+                blurPercent = settings.playerBackgroundBlur
             )
             Spacer(Modifier.height(4.dp))
             Slider(
-                value = settings.playerBackgroundAlpha.toFloat(),
-                onValueChange = { onPlayerBackgroundAlphaChange(it.roundToInt()) },
+                value = settings.playerBackgroundBlur.toFloat(),
+                onValueChange = { onPlayerBackgroundBlurChange(it.roundToInt()) },
                 valueRange = 0f..100f,
                 steps = 19
             )
@@ -649,32 +651,41 @@ private fun AccentDot(
 
 /** Живой предпросмотр размытого фона: видно, как выглядит прозрачность ещё до открытия плеера. */
 @Composable
-private fun BackgroundPreview(artwork: Any?, imageLoader: ImageLoader, alphaPercent: Int) {
+private fun BackgroundPreview(artwork: Any?, imageLoader: ImageLoader, blurPercent: Int) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
+        val imageModifier = Modifier
+            .fillMaxSize()
+            .blur((blurPercent.coerceIn(0, 100) / 2f).dp)
+            .alpha(0.8f)
         if (artwork != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(artwork)
-                    .size(64, 64)
+                    .size(128, 128)
                     .build(),
                 imageLoader = imageLoader,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(24.dp)
-                    .alpha(alphaPercent.coerceIn(0, 100) / 100f)
+                modifier = imageModifier
+            )
+        } else {
+            // Нет текущего трека — показываем заглушку, чтобы прозрачность было видно.
+            Image(
+                painter = painterResource(R.drawable.preview_placeholder),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier
             )
         }
         Text(
-            text = stringResource(R.string.settings_background_alpha_preview),
+            text = stringResource(R.string.settings_background_blur_preview),
             style = MaterialTheme.typography.bodySmall
         )
     }

@@ -21,7 +21,7 @@ object CoverColorSampler {
 
     suspend fun sample(context: Context, song: Song): Int? = withContext(Dispatchers.IO) {
         val bitmap = song.customCover?.let { decode(context, it) }
-            ?: embeddedArtwork(song.uri)
+            ?: embeddedArtwork(context, song.uri)
             ?: return@withContext null
         try {
             hueOf(bitmap)
@@ -39,10 +39,10 @@ object CoverColorSampler {
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
     }.getOrNull()
 
-    private fun embeddedArtwork(uri: Uri): Bitmap? = runCatching {
+    private fun embeddedArtwork(context: Context, uri: Uri): Bitmap? = runCatching {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(uri.toString())
+            retriever.setDataSource(context, uri)
             retriever.embeddedPicture?.let { bytes ->
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)

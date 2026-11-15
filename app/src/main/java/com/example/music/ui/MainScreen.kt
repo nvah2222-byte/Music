@@ -81,6 +81,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -146,6 +147,8 @@ import com.example.music.player.AudioCoverFetcher
 import com.example.music.toMediaItems
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -991,26 +994,35 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
     val shuffledOrder = remember(librarySongs.size) { librarySongs.map { it.id }.shuffled() }
     val unknownArtistName = context.getString(R.string.unknown_artist)
 
-    // Оттенки обложек для сортировки: считаем в фоне и кэшируем в настройках.
+    // Оттенки обложек для сортировки: считаем в фоне (пачками) и кэшируем в настройках.
     var coverColors by remember { mutableStateOf(repository.loadCoverColors()) }
+    var samplingTotal by remember { mutableIntStateOf(0) }
+    var samplingDone by remember { mutableIntStateOf(0) }
     LaunchedEffect(settings.trackSort, librarySongs.size) {
-        if (settings.trackSort != 5) return@LaunchedEffect
+        if (settings.trackSort != 5) {
+            samplingTotal = 0
+            return@LaunchedEffect
+        }
         val missing = librarySongs.filter { it.id !in coverColors }
-        if (missing.isEmpty()) return@LaunchedEffect
-        val fresh = HashMap<Long, Int>()
-        missing.forEachIndexed { index, song ->
-            CoverColorSampler.sample(context, song)?.let { fresh[song.id] = it }
-            if (fresh.size >= 25) {
+        if (missing.isEmpty()) {
+            samplingTotal = 0
+            return@LaunchedEffect
+        }
+        samplingTotal = missing.size
+        samplingDone = 0
+        // По 8 файлов параллельно: иначе 1000 обложек читаются минутами.
+        for (chunk in missing.chunked(8)) {
+            val results = chunk.map { song ->
+                async(Dispatchers.IO) { song.id to CoverColorSampler.sample(context, song) }
+            }.awaitAll()
+            val fresh = results.mapNotNull { (id, hue) -> hue?.let { id to it } }.toMap()
+            if (fresh.isNotEmpty()) {
                 coverColors = coverColors + fresh
                 repository.saveCoverColors(coverColors)
-                fresh.clear()
             }
-            if (index % 10 == 0) delay(1)
+            samplingDone += chunk.size
         }
-        if (fresh.isNotEmpty()) {
-            coverColors = coverColors + fresh
-            repository.saveCoverColors(coverColors)
-        }
+        samplingTotal = 0
     }
 
     /** Ключ «по обложке»: свои обложки → настоящие альбомы → по исполнителю → остальное. */
@@ -1034,9 +1046,10 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
         3 -> librarySongs.sortedBy { it.durationMs }
         4 -> librarySongs.sortedByDescending { it.durationMs }
         5 -> librarySongs.sortedWith(
-            compareByDescending<Song> { coverPresence[it.id] == true }
-                .thenBy { coverColors[it.id] ?: 360 }
-                .thenBy { albumCoverKey(it) }
+            // Жёсткая и предсказуемая сортировка: сначала по цветовому сектору (по 10°),
+            // внутри сектора — по точному оттенку, затем по названию. Без обложки — в конец.
+            compareBy<Song> { coverColors[it.id]?.div(10) ?: 40 }
+                .thenBy { coverColors[it.id] ?: 400 }
                 .thenBy { it.title.lowercase() }
         )
         6 -> librarySongs.sortedByDescending { it.dateAdded }
@@ -1265,7 +1278,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     onOpenQueue = { showQueue = true },
                     coverRotation = settings.coverRotation,
                     rotateBackground = settings.backgroundRotation,
-                    backgroundAlpha = settings.playerBackgroundAlpha,
+                    backgroundBlur = settings.playerBackgroundBlur,
                     onClose = { screen = screenBeforePlayer }
                 )
             }
@@ -1324,6 +1337,14 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                     }
                 }
             ) { padding ->
+                if (samplingTotal > 0) {
+                    LinearProgressIndicator(
+                        progress = { samplingDone.toFloat() / samplingTotal.coerceAtLeast(1) },
+                        modifier = Modifier
+                            .padding(padding)
+                            .fillMaxWidth()
+                    )
+                }
                 when (val current = screen) {
                     is Screen.Songs -> if (!hasStoragePermission) {
                         PermissionRequiredScreen(
@@ -1807,7 +1828,7 @@ fun MainScreen(player: MediaController?, settingsStore: SettingsStore) {
                         onCrossfadeMsChange = settingsStore::setCrossfadeMs,
                         onCoverRotationChange = settingsStore::setCoverRotation,
                         onBackgroundRotationChange = settingsStore::setBackgroundRotation,
-                        onPlayerBackgroundAlphaChange = settingsStore::setPlayerBackgroundAlpha,
+                        onPlayerBackgroundBlurChange = settingsStore::setPlayerBackgroundBlur,
                         onSoundProfileChange = settingsStore::setSoundProfile,
                         onVolumeBalanceChange = settingsStore::setVolumeBalance,
                         onTargetLoudnessDbChange = settingsStore::setTargetLoudnessDb,
